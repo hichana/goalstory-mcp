@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "MCP server for Productive Visualization",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
     "orchestra8-mcp-server": "dist/index.js"
@@ -20,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hichana/orchestra8-mcp-server.git"
+    "url": "git+https://github.com/hichana/orchestra8-mcp"
   },
   "keywords": [
     "mcp",
@@ -29,7 +28,7 @@
     "ai",
     "visualization"
   ],
-  "author": "hichana",
+  "author": "@hichana",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hichana/orchestra8/issues"
