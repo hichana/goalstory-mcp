@@ -1,11 +1,11 @@
 {
-  "name": "@orchestra8/mcp-server",
+  "name": "@orchestra8/orchestra8-mcp",
   "version": "0.1.0",
   "description": "MCP server for Productive Visualization",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "orchestra8-mcp-server": "dist/index.js"
+    "orchestra8-mcp": "dist/index.js"
   },
   "files": [
     "dist"
@@ -31,7 +31,7 @@
   "author": "@hichana",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hichana/orchestra8/issues"
+    "url": "https://github.com/hichana/orchestra8-mcp/issues"
   },
   "homepage": "https://orchestra8.com",
   "dependencies": {
