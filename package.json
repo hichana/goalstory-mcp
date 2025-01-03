@@ -1,0 +1,48 @@
+{
+  "name": "@orchestra8/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Productive Visualization",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "orchestra8-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "inspect": "npx @modelcontextprotocol/inspector dist/index.js http://127.0.0.1:4000 admin",
+    "mcp": "concurrently \"npm run build && npm run inspect\" \"npm run watch\" "
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hichana/orchestra8-mcp-server.git"
+  },
+  "keywords": [
+    "mcp",
+    "orchestra8",
+    "claude",
+    "ai",
+    "visualization"
+  ],
+  "author": "hichana",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hichana/orchestra8/issues"
+  },
+  "homepage": "https://orchestra8.com",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.5.0",
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "concurrently": "^9.1.2",
+    "shx": "^0.3.4",
+    "typescript": "^5.7.2"
+  }
+}
