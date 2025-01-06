@@ -15,7 +15,9 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspect": "npx @modelcontextprotocol/inspector dist/index.js http://127.0.0.1:4000 admin",
-    "mcp": "concurrently \"npm run build && npm run inspect\" \"npm run watch\" "
+    "mcp": "concurrently \"npm run build && npm run inspect\" \"npm run watch\" ",
+    "inspect-staging": "npx @modelcontextprotocol/inspector dist/index.js https://staging-orchestra8-xtqi.encr.app 757ead68e77d187f1ec8ab05594ad3cd22a6e34c35d905036688180f0cda1b56",
+    "mcp-staging": "concurrently \"npm run build && npm run inspect-staging\" \"npm run watch\" "
   },
   "repository": {
     "type": "git",
