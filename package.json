@@ -1,6 +1,6 @@
 {
   "name": "@orchestra8/orchestra8-mcp",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "MCP server for Productive Visualization",
   "main": "dist/index.js",
   "type": "module",
