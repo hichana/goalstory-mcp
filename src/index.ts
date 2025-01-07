@@ -101,16 +101,6 @@ const READ_ONE_USER_TOOL: Tool = {
 //
 // -- LISTS TOOLS --
 //
-const COUNT_LISTS_TOOL: Tool = {
-  name: "orchestra_count_lists",
-  description:
-    "Count how many lists exist for the currently authenticated user",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
-};
-
 const CREATE_LIST_TOOL: Tool = {
   name: "orchestra_create_list",
   description: "Create a new list",
@@ -157,21 +147,19 @@ const UPDATE_LIST_TOOL: Tool = {
   },
 };
 
-const READ_LISTS_TOOL: Tool = {
-  name: "orchestra_read_lists",
-  description: "Get all lists for the authenticated user, optionally paginated",
+const DESTROY_LIST_TOOL: Tool = {
+  name: "orchestra_destroy_list",
+  description:
+    "Delete an list by ID. The user must own this list or be authorized to remove it. All items for the list will be deleted as well.",
   inputSchema: {
     type: "object",
     properties: {
-      page: {
-        type: "number",
-        description: "Page number (optional)",
-      },
-      limit: {
-        type: "number",
-        description: "Number of items per page (optional)",
+      id: {
+        type: "string",
+        description: "Which list ID to delete",
       },
     },
+    required: ["id"],
   },
 };
 
@@ -190,19 +178,37 @@ const READ_ONE_LIST_TOOL: Tool = {
   },
 };
 
-//
-// -- ITEMS TOOLS --
-//
-const COUNT_ITEMS_TOOL: Tool = {
-  name: "orchestra_count_items",
+const READ_LISTS_TOOL: Tool = {
+  name: "orchestra_read_lists",
+  description: "Get all lists for the authenticated user, optionally paginated",
+  inputSchema: {
+    type: "object",
+    properties: {
+      page: {
+        type: "number",
+        description: "Page number (optional)",
+      },
+      limit: {
+        type: "number",
+        description: "Number of items per page (optional)",
+      },
+    },
+  },
+};
+
+const COUNT_LISTS_TOOL: Tool = {
+  name: "orchestra_count_lists",
   description:
-    "Count how many items exist for the currently authenticated user",
+    "Count how many lists exist for the currently authenticated user",
   inputSchema: {
     type: "object",
     properties: {},
   },
 };
 
+//
+// -- ITEMS TOOLS --
+//
 const CREATE_ITEM_TOOL: Tool = {
   name: "orchestra_create_item",
   description: "Create a new item in a given list",
@@ -224,45 +230,6 @@ const CREATE_ITEM_TOOL: Tool = {
       },
     },
     required: ["list_id", "name"],
-  },
-};
-
-const READ_ITEMS_TOOL: Tool = {
-  name: "orchestra_read_items",
-  description:
-    "Get items for the authenticated user, optionally filtered by list_id or paginated",
-  inputSchema: {
-    type: "object",
-    properties: {
-      page: {
-        type: "number",
-        description: "Page number (optional)",
-      },
-      limit: {
-        type: "number",
-        description: "Number of items per page (optional)",
-      },
-      list_id: {
-        type: "string",
-        description:
-          "If provided, only items from this list are returned (optional)",
-      },
-    },
-  },
-};
-
-const READ_ONE_ITEM_TOOL: Tool = {
-  name: "orchestra_read_one_item",
-  description: "Get a single item by ID for the authenticated user",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Which item ID to retrieve",
-      },
-    },
-    required: ["id"],
   },
 };
 
@@ -305,6 +272,55 @@ const DESTROY_ITEM_TOOL: Tool = {
   },
 };
 
+const READ_ONE_ITEM_TOOL: Tool = {
+  name: "orchestra_read_one_item",
+  description: "Get a single item by ID for the authenticated user",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        description: "Which item ID to retrieve",
+      },
+    },
+    required: ["id"],
+  },
+};
+
+const READ_ITEMS_TOOL: Tool = {
+  name: "orchestra_read_items",
+  description:
+    "Get items for the authenticated user, optionally filtered by list_id or paginated",
+  inputSchema: {
+    type: "object",
+    properties: {
+      page: {
+        type: "number",
+        description: "Page number (optional)",
+      },
+      limit: {
+        type: "number",
+        description: "Number of items per page (optional)",
+      },
+      list_id: {
+        type: "string",
+        description:
+          "If provided, only items from this list are returned (optional)",
+      },
+    },
+  },
+};
+
+const COUNT_ITEMS_TOOL: Tool = {
+  name: "orchestra_count_items",
+  description:
+    "Count how many items exist for the currently authenticated user",
+  inputSchema: {
+    type: "object",
+    properties: {},
+  },
+};
+
 // -----------------------------------------
 // 3. Instantiate the MCP server
 // -----------------------------------------
@@ -329,6 +345,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     COUNT_LISTS_TOOL,
     CREATE_LIST_TOOL,
     UPDATE_LIST_TOOL,
+    DESTROY_LIST_TOOL,
     READ_LISTS_TOOL,
     READ_ONE_LIST_TOOL,
 
@@ -363,7 +380,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.limit) params.set("limit", `${args.limit}`);
         const url = `${ORCHESTRA8_API_BASE_URL}/users?${params.toString()}`;
         const result = await doRequest(url, "GET");
-        console.error("read users!!!!!!!!!");
 
         return {
           content: [
@@ -448,6 +464,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: `List updated:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      case "orchestra_destroy_list": {
+        // args: { id: string }
+        const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
+        const result = await doRequest(url, "DELETE");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `List deleted:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
