@@ -10,7 +10,7 @@ import {
 import axios from "axios";
 
 // -----------------------------------------
-// 1. Environment variables & basic setup
+// 1. Environment variables & basic setup with helper
 // -----------------------------------------
 const argv = process.argv.slice(2);
 const ORCHESTRA8_API_BASE_URL = argv[0];
@@ -39,14 +39,13 @@ async function doRequest<T = any>(
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ORCHESTRA8_API_TOKEN}`, // Or adapt as needed
+        Authorization: `Bearer ${ORCHESTRA8_API_TOKEN}`,
       },
       data: body,
     });
 
     return response.data as T;
   } catch (error: any) {
-    // Parse error for better logging
     const errorText = error.response?.data || error.message;
     throw new Error(
       `HTTP Error ${
@@ -93,42 +92,6 @@ const READ_ONE_USER_TOOL: Tool = {
       id: {
         type: "string",
         description: "The user ID to retrieve",
-      },
-    },
-    required: ["id"],
-  },
-};
-
-const UPDATE_USER_TOOL: Tool = {
-  name: "orchestra_update_user",
-  description:
-    "Update a user by ID. Only the user themself or admin can update this user.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Which user ID to update",
-      },
-      name: {
-        type: "string",
-        description: "The new user name",
-      },
-    },
-    required: ["id", "name"],
-  },
-};
-
-const DESTROY_USER_TOOL: Tool = {
-  name: "orchestra_destroy_user",
-  description:
-    "Delete a user by ID. Only the user themself or admin can do this.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Which user ID to delete",
       },
     },
     required: ["id"],
@@ -362,8 +325,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     READ_USERS_TOOL,
     READ_ONE_USER_TOOL,
-    UPDATE_USER_TOOL,
-    DESTROY_USER_TOOL,
 
     COUNT_LISTS_TOOL,
     CREATE_LIST_TOOL,
@@ -424,38 +385,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: `User data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      case "orchestra_update_user": {
-        // args: { id: string; name: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/users/${args.id}`;
-        const result = await doRequest(url, "PATCH", {
-          data: { name: args.name },
-        });
-        return {
-          content: [
-            {
-              type: "text",
-              text: `User updated:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      case "orchestra_destroy_user": {
-        // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/users/${args.id}`;
-        const result = await doRequest(url, "DELETE");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `User deleted:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
