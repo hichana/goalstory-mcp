@@ -62,21 +62,27 @@ async function doRequest<T = any>(
 // -----------------------------------------
 
 //
-// -- USERS TOOLS --
+// -- USERS --
 //
-const READ_USERS_TOOL: Tool = {
-  name: "orchestra_read_users",
-  description: "Get all public user data, possibly paginated",
+const UPDATE_SELF_USER_TOOL: Tool = {
+  name: "orchestra_update_self_user",
+  description:
+    "Update the authenticated user's data (e.g., name, about, visibility).",
   inputSchema: {
     type: "object",
     properties: {
-      page: {
-        type: "number",
-        description: "Page number (optional)",
+      name: {
+        type: "string",
+        description: "The updated name for the user (optional).",
       },
-      limit: {
+      about: {
+        type: "string",
+        description: "Updated 'about' information (optional).",
+      },
+      visibility: {
         type: "number",
-        description: "Number of results per page (optional)",
+        description:
+          "Updated visibility status: 0 = public, 1 = private (optional).",
       },
     },
   },
@@ -99,7 +105,7 @@ const READ_ONE_USER_TOOL: Tool = {
 };
 
 //
-// -- LISTS TOOLS --
+// -- LISTS --
 //
 const CREATE_LIST_TOOL: Tool = {
   name: "orchestra_create_list",
@@ -114,6 +120,16 @@ const CREATE_LIST_TOOL: Tool = {
       description: {
         type: "string",
         description: "Optional descriptive text for this list",
+      },
+      story_mode: {
+        type: "number",
+        description:
+          "Optional story mode (0=adventure, 1=continuity). Omit if not updating.",
+      },
+      belief_mode: {
+        type: "number",
+        description:
+          "Optional belief mode (0=Christianity, 1=Many Worlds). Omit if not updating.",
       },
     },
     required: ["name"],
@@ -132,15 +148,32 @@ const UPDATE_LIST_TOOL: Tool = {
       },
       name: {
         type: "string",
-        description: "Update the list name (optional)",
+        description: "Updated name (optional)",
       },
       status: {
         type: "number",
-        description: "Update the list status (optional)",
+        description: "Updated status: 0=active, 1=archived (optional)",
       },
       description: {
         type: "string",
-        description: "Update the list description (optional)",
+        description: "Updated description (optional)",
+      },
+      outcome: {
+        type: "string",
+        description: "Updated user's desired outcome in life (optional)",
+      },
+      evidence: {
+        type: "string",
+        description: "Updated evidence for this list (optional)",
+      },
+      story_mode: {
+        type: "number",
+        description: "Updated story mode: 0=adventure, 1=continuity (optional)",
+      },
+      belief_mode: {
+        type: "number",
+        description:
+          "Updated belief mode: 0=Christianity, 1=Many Worlds (optional)",
       },
     },
     required: ["id"],
@@ -150,7 +183,7 @@ const UPDATE_LIST_TOOL: Tool = {
 const DESTROY_LIST_TOOL: Tool = {
   name: "orchestra_destroy_list",
   description:
-    "Delete an list by ID. The user must own this list or be authorized to remove it. All items for the list will be deleted as well.",
+    "Delete a list by ID. The user must own this list or be authorized to remove it. All items for the list will be deleted as well.",
   inputSchema: {
     type: "object",
     properties: {
@@ -196,46 +229,75 @@ const READ_LISTS_TOOL: Tool = {
   },
 };
 
-const COUNT_LISTS_TOOL: Tool = {
-  name: "orchestra_count_lists",
-  description:
-    "Count how many lists exist for the currently authenticated user",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
-};
-
 //
-// -- ITEMS TOOLS --
+// -- ITEMS --
 //
-const CREATE_ITEM_TOOL: Tool = {
-  name: "orchestra_create_item",
-  description: "Create a new item in a given list",
+const CREATE_ITEMS_TOOL: Tool = {
+  name: "orchestra_create_items",
+  description: "Create one or more new item(s) for a given list",
   inputSchema: {
     type: "object",
     properties: {
       list_id: {
         type: "string",
-        description: "The list ID in which you want to create the item",
+        description: "The list ID in which to create the item",
       },
-      name: {
-        type: "string",
-        description: "The name/title of the new item",
-      },
-      status: {
-        type: "number",
-        description:
-          "The status code, e.g. 0 = pending, 1 = complete, etc. (optional)",
+      items: {
+        type: "array",
+        description: "An array of items to create.",
+        items: {
+          type: "string",
+          description: "The name/title of the new item",
+        },
       },
     },
-    required: ["list_id", "name"],
+    required: ["list_id, items"],
+  },
+};
+
+const READ_ITEMS_TOOL: Tool = {
+  name: "orchestra_read_items",
+  description:
+    "Get items for the authenticated user, optionally filtered by list_id or paginated (list_id is required).",
+  inputSchema: {
+    type: "object",
+    properties: {
+      page: {
+        type: "number",
+        description: "Page number (optional)",
+      },
+      limit: {
+        type: "number",
+        description: "Number of items per page (optional)",
+      },
+      list_id: {
+        type: "string",
+        description:
+          "The list ID filter: only items from this list are returned (required)",
+      },
+    },
+    required: ["list_id"],
+  },
+};
+
+const READ_ONE_ITEM_TOOL: Tool = {
+  name: "orchestra_read_one_item",
+  description: "Get a single item by ID for the authenticated user",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        description: "Which item ID to retrieve",
+      },
+    },
+    required: ["id"],
   },
 };
 
 const UPDATE_ITEM_TOOL: Tool = {
   name: "orchestra_update_item",
-  description: "Update an existing item (name, status, etc.) by ID",
+  description: "Update an existing item (name, status, outcome, etc.) by ID",
   inputSchema: {
     type: "object",
     properties: {
@@ -245,11 +307,19 @@ const UPDATE_ITEM_TOOL: Tool = {
       },
       name: {
         type: "string",
-        description: "New name/title of the item (optional)",
+        description: "Updated name/title of the item (optional)",
       },
       status: {
         type: "number",
-        description: "New status code (optional)",
+        description: "Updated status code (0=pending, 1=complete) (optional)",
+      },
+      outcome: {
+        type: "string",
+        description: "Updated outcome for this item (optional)",
+      },
+      evidence: {
+        type: "string",
+        description: "Updated evidence or progress details (optional)",
       },
     },
     required: ["id"],
@@ -272,25 +342,40 @@ const DESTROY_ITEM_TOOL: Tool = {
   },
 };
 
-const READ_ONE_ITEM_TOOL: Tool = {
-  name: "orchestra_read_one_item",
-  description: "Get a single item by ID for the authenticated user",
+//
+// -- CONTEXT (GET /context) --
+//
+const GET_STORY_CONTEXT_TOOL: Tool = {
+  name: "orchestra_get_story_context",
+  description:
+    "Fetch story context for a given list and item, optionally passing user feedback.",
   inputSchema: {
     type: "object",
     properties: {
-      id: {
+      listId: {
         type: "string",
-        description: "Which item ID to retrieve",
+        description: "The list ID associated with the context",
+      },
+      itemId: {
+        type: "string",
+        description: "The item ID associated with the context",
+      },
+      feedback: {
+        type: "string",
+        description: "Optional user feedback that may affect the context",
       },
     },
-    required: ["id"],
+    required: ["listId", "itemId"],
   },
 };
 
-const READ_ITEMS_TOOL: Tool = {
-  name: "orchestra_read_items",
+//
+// -- STORIES --
+//
+const READ_STORIES_TOOL: Tool = {
+  name: "orchestra_read_stories",
   description:
-    "Get items for the authenticated user, optionally filtered by list_id or paginated",
+    "Retrieve multiple stories, filtered by list_id and item_id (both required). Supports pagination.",
   inputSchema: {
     type: "object",
     properties: {
@@ -300,24 +385,60 @@ const READ_ITEMS_TOOL: Tool = {
       },
       limit: {
         type: "number",
-        description: "Number of items per page (optional)",
+        description: "Number of results per page (optional)",
       },
       list_id: {
         type: "string",
-        description:
-          "If provided, only items from this list are returned (optional)",
+        description: "Only stories that belong to this list",
+      },
+      item_id: {
+        type: "string",
+        description: "Only stories that belong to this item",
       },
     },
+    required: ["list_id", "item_id"],
   },
 };
 
-const COUNT_ITEMS_TOOL: Tool = {
-  name: "orchestra_count_items",
-  description:
-    "Count how many items exist for the currently authenticated user",
+const CREATE_STORY_TOOL: Tool = {
+  name: "orchestra_create_story",
+  description: "Create a new story for a given list and item.",
   inputSchema: {
     type: "object",
-    properties: {},
+    properties: {
+      list_id: {
+        type: "string",
+        description: "The list ID for which this story is created",
+      },
+      item_id: {
+        type: "string",
+        description: "The item ID for which this story is created",
+      },
+      title: {
+        type: "string",
+        description: "The title of the new story",
+      },
+      story_text: {
+        type: "string",
+        description: "The text content of the new story",
+      },
+    },
+    required: ["list_id", "item_id", "title", "story_text"],
+  },
+};
+
+const READ_ONE_STORY_TOOL: Tool = {
+  name: "orchestra_read_one_story",
+  description: "Retrieve a single story by ID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        description: "The story ID to retrieve",
+      },
+    },
+    required: ["id"],
   },
 };
 
@@ -339,22 +460,31 @@ const server = new Server(
 // Return all tools when asked
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
-    READ_USERS_TOOL,
+    // USER
+    UPDATE_SELF_USER_TOOL,
     READ_ONE_USER_TOOL,
 
-    COUNT_LISTS_TOOL,
+    // LISTS
     CREATE_LIST_TOOL,
     UPDATE_LIST_TOOL,
     DESTROY_LIST_TOOL,
     READ_LISTS_TOOL,
     READ_ONE_LIST_TOOL,
 
-    COUNT_ITEMS_TOOL,
-    CREATE_ITEM_TOOL,
+    // ITEMS
+    CREATE_ITEMS_TOOL,
     READ_ITEMS_TOOL,
     READ_ONE_ITEM_TOOL,
     UPDATE_ITEM_TOOL,
     DESTROY_ITEM_TOOL,
+
+    // CONTEXT
+    GET_STORY_CONTEXT_TOOL,
+
+    // STORIES
+    READ_STORIES_TOOL,
+    CREATE_STORY_TOOL,
+    READ_ONE_STORY_TOOL,
   ],
 }));
 
@@ -373,19 +503,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       // ---------- USERS ----------
-      case "orchestra_read_users": {
-        // args: { page?: number; limit?: number }
-        const params = new URLSearchParams();
-        if (args.page) params.set("page", `${args.page}`);
-        if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${ORCHESTRA8_API_BASE_URL}/users?${params.toString()}`;
-        const result = await doRequest(url, "GET");
-
+      case "orchestra_update_self_user": {
+        // PATCH /users
+        // body => { name?, about?, visibility? }
+        const url = `${ORCHESTRA8_API_BASE_URL}/users`;
+        const result = await doRequest(url, "PATCH", {
+          name: args.name,
+          about: args.about,
+          visibility: args.visibility,
+        });
         return {
           content: [
             {
               type: "text",
-              text: `Users found:\n${JSON.stringify(result, null, 2)}`,
+              text: `Updated user:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
@@ -393,6 +524,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_read_one_user": {
+        // GET /users/{id}
         // args: { id: string }
         const url = `${ORCHESTRA8_API_BASE_URL}/users/${args.id}`;
         const result = await doRequest(url, "GET");
@@ -408,26 +540,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- LISTS ----------
-      case "orchestra_count_lists": {
-        const url = `${ORCHESTRA8_API_BASE_URL}/count/lists`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Number of lists: ${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
       case "orchestra_create_list": {
-        // args: { name: string; description?: string }
+        // POST /lists
+        // body => { name, description?, story_mode?, belief_mode? }
         const url = `${ORCHESTRA8_API_BASE_URL}/lists`;
         const result = await doRequest(url, "POST", {
           name: args.name,
           description: args.description,
+          story_mode: args.story_mode,
+          belief_mode: args.belief_mode,
         });
         return {
           content: [
@@ -441,24 +562,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_update_list": {
-        // args: { id: string; name?: string; status?: number; description?: string }
+        // PATCH /lists/{id}
+        // body => { name?, status?, description?, outcome?, evidence?, story_mode?, belief_mode? }
         const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
-        // TODO: consider how these types can be shared with api types
         const typedArgs = args as {
           id: string;
           name?: string;
           status?: number;
           description?: string;
+          outcome?: string;
+          evidence?: string;
+          story_mode?: string;
+          belief_mode?: string;
         };
+
         const body = {
           ...(typedArgs.name && { name: typedArgs.name }),
           ...(typeof typedArgs.status !== "undefined" && {
             status: typedArgs.status,
           }),
           ...(typedArgs.description && { description: typedArgs.description }),
+          ...(typedArgs.outcome && { outcome: typedArgs.outcome }),
+          ...(typedArgs.evidence && { evidence: typedArgs.evidence }),
+          ...(typeof typedArgs.story_mode !== "undefined" && {
+            story_mode: typedArgs.story_mode,
+          }),
+          ...(typeof typedArgs.belief_mode !== "undefined" && {
+            belief_mode: typedArgs.belief_mode,
+          }),
         };
-        // const result = await doRequest(url, "PATCH", body);
-        const result = await doRequest(url, "PATCH", { data: { ...body } });
+        const result = await doRequest(url, "PATCH", body);
         return {
           content: [
             {
@@ -471,6 +604,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_destroy_list": {
+        // DELETE /lists/{id}
         // args: { id: string }
         const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
         const result = await doRequest(url, "DELETE");
@@ -486,7 +620,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_read_lists": {
-        // args: { page?: number; limit?: number }
+        // GET /lists
+        // query => { page, limit }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
@@ -504,6 +639,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_read_one_list": {
+        // GET /lists/{id}
         // args: { id: string }
         const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
         const result = await doRequest(url, "GET");
@@ -519,29 +655,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- ITEMS ----------
-      case "orchestra_count_items": {
-        const url = `${ORCHESTRA8_API_BASE_URL}/count/items`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Number of items: ${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      case "orchestra_create_item": {
-        // args: { list_id: string; name: string; status?: number }
+      case "orchestra_create_items": {
+        // POST /items
+        // body => { items: [ { list_id, name, status? }, ... ] }
         const url = `${ORCHESTRA8_API_BASE_URL}/items`;
-        const result = await doRequest(url, "POST", args);
+        const listId = args.list_id;
+        let items = args.items;
+        if (typeof items === "string") {
+          const itemsAreAString = items as string;
+          items = itemsAreAString.split(",");
+        }
+        const result = await doRequest(url, "POST", {
+          list_id: listId,
+          items,
+        });
+
         return {
           content: [
             {
               type: "text",
-              text: `Item created:\n${JSON.stringify(result, null, 2)}`,
+              text: `Item(s) created:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
@@ -549,12 +682,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_read_items": {
-        // args: { page?: number; limit?: number; list_id?: string }
+        // GET /items
+        // query => { page, limit, list_id (required) }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
         params.set("list_id", `${args.list_id}`);
-
         const url = `${ORCHESTRA8_API_BASE_URL}/items?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
@@ -569,6 +702,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_read_one_item": {
+        // GET /items/{id}
         // args: { id: string }
         const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
         const result = await doRequest(url, "GET");
@@ -584,20 +718,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_update_item": {
-        // args: { id: string; name?: string; status?: number }
+        // PATCH /items/{id}
+        // body => { name?, status?, outcome?, evidence? }
         const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
           status?: number;
+          description?: string;
+          outcome?: string;
+          evidence?: string;
         };
         const body = {
           ...(typedArgs.name && { name: typedArgs.name }),
           ...(typeof typedArgs.status !== "undefined" && {
             status: typedArgs.status,
           }),
+          ...(typedArgs.outcome && { outcome: typedArgs.outcome }),
+          ...(typedArgs.evidence && { evidence: typedArgs.evidence }),
         };
-        const result = await doRequest(url, "PATCH", { data: { ...body } });
+        const result = await doRequest(url, "PATCH", body);
         return {
           content: [
             {
@@ -610,6 +750,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "orchestra_destroy_item": {
+        // DELETE /items/{id}
         // args: { id: string }
         const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
         const result = await doRequest(url, "DELETE");
@@ -624,6 +765,90 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      // ---------- CONTEXT ----------
+      case "orchestra_get_story_context": {
+        // GET /context
+        // query => { listId, itemId, feedback? }
+        const params = new URLSearchParams();
+        params.set("listId", `${args.listId}`);
+        params.set("itemId", `${args.itemId}`);
+        if (args.feedback) {
+          params.set("feedback", `${args.feedback}`);
+        }
+        const url = `${ORCHESTRA8_API_BASE_URL}/context?${params.toString()}`;
+        const result = await doRequest(url, "GET");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Context retrieved:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      // ---------- STORIES ----------
+      case "orchestra_read_stories": {
+        // GET /stories
+        // query => { page?, limit?, list_id, item_id }
+        const params = new URLSearchParams();
+        if (args.page) params.set("page", `${args.page}`);
+        if (args.limit) params.set("limit", `${args.limit}`);
+        params.set("list_id", `${args.list_id}`);
+        params.set("item_id", `${args.item_id}`);
+        const url = `${ORCHESTRA8_API_BASE_URL}/stories?${params.toString()}`;
+        const result = await doRequest(url, "GET");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Stories retrieved:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      case "orchestra_create_story": {
+        // POST /stories
+        // body => { list_id, item_id, title, story_text }
+        const url = `${ORCHESTRA8_API_BASE_URL}/stories`;
+        const body = {
+          list_id: args.list_id,
+          item_id: args.item_id,
+          title: args.title,
+          story_text: args.story_text,
+        };
+        const result = await doRequest(url, "POST", body);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Story created:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      case "orchestra_read_one_story": {
+        // GET /stories/{id}
+        // args: { id: string }
+        const url = `${ORCHESTRA8_API_BASE_URL}/stories/${args.id}`;
+        const result = await doRequest(url, "GET");
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Story data:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      // ---------- UNKNOWN ----------
       default:
         return {
           content: [{ type: "text", text: `Unknown tool: ${name}` }],
