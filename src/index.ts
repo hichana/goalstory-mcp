@@ -321,6 +321,10 @@ const UPDATE_ITEM_TOOL: Tool = {
         type: "string",
         description: "Updated evidence or progress details (optional)",
       },
+      notes: {
+        type: "string",
+        description: "The notes for the item.",
+      },
     },
     required: ["id"],
   },
@@ -728,6 +732,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           description?: string;
           outcome?: string;
           evidence?: string;
+          notes?: string;
         };
         const body = {
           ...(typedArgs.name && { name: typedArgs.name }),
@@ -736,6 +741,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }),
           ...(typedArgs.outcome && { outcome: typedArgs.outcome }),
           ...(typedArgs.evidence && { evidence: typedArgs.evidence }),
+          ...(typedArgs.notes && { notes: typedArgs.notes }),
         };
         const result = await doRequest(url, "PATCH", body);
         return {
