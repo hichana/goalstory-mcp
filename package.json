@@ -1,6 +1,6 @@
 {
   "name": "splashtodo-mcp",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "MCP server for Productive Visualization",
   "main": "dist/index.js",
   "type": "module",
