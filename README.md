@@ -1,8 +1,8 @@
-# Orchestra8 MCP Server
+# Splash Todo MCP Server
 
 ## Get an API key
 
-Go to [Orchestra8.com](https://www.orchestra8.com/) to sign up/in and get a free API key.
+Go to [SplashToDo.com](https://www.splashtodo.com/) to sign up/in and get a free API key.
 
 ## Server config
 
@@ -11,6 +11,6 @@ The last two args are picked up in the MCP server and utilized like env vars. Th
 ```
 "orchestra8": {
     "command": "npx",
-    "args": ["-y", "@orchestra8/orchestra8-mcp", "https://prod-orchestra8-xtqi.encr.app", "your-api-key"]
+    "args": ["-y", "splashtodo-mcp", "https://prod-orchestra8-xtqi.encr.app", "your-api-key"]
 }
 ```
