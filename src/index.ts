@@ -323,7 +323,7 @@ const UPDATE_ITEM_TOOL: Tool = {
       },
       notes: {
         type: "string",
-        description: "The notes for the item.",
+        description: "Markdown formatted notes for the item.",
       },
     },
     required: ["id"],
