@@ -234,7 +234,8 @@ const READ_LISTS_TOOL: Tool = {
 //
 const CREATE_ITEMS_TOOL: Tool = {
   name: "splashtodo_create_items",
-  description: "Create one or more new item(s) for a given list",
+  description:
+    "Create one or more **new** ordered items for a given list (highest priority first and least priority last)",
   inputSchema: {
     type: "object",
     properties: {
