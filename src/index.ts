@@ -13,17 +13,17 @@ import axios from "axios";
 // 1. Environment variables & basic setup with helper
 // -----------------------------------------
 const argv = process.argv.slice(2);
-const ORCHESTRA8_API_BASE_URL = argv[0];
-const ORCHESTRA8_API_TOKEN = argv[1];
+const SPLASHTODO_API_BASE_URL = argv[0];
+const SPLASHTODO_API_TOKEN = argv[1];
 
-if (!ORCHESTRA8_API_BASE_URL) {
+if (!SPLASHTODO_API_BASE_URL) {
   console.error(
-    "Error: ORCHESTRA8_API_BASE_URL environment variable is required"
+    "Error: SPLASHTODO_API_BASE_URL environment variable is required"
   );
   process.exit(1);
 }
-if (!ORCHESTRA8_API_TOKEN) {
-  console.error("Error: ORCHESTRA8_API_TOKEN environment variable is required");
+if (!SPLASHTODO_API_TOKEN) {
+  console.error("Error: SPLASHTODO_API_TOKEN environment variable is required");
   process.exit(1);
 }
 
@@ -39,7 +39,7 @@ async function doRequest<T = any>(
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ORCHESTRA8_API_TOKEN}`,
+        Authorization: `Bearer ${SPLASHTODO_API_TOKEN}`,
       },
       data: body,
     });
@@ -65,7 +65,7 @@ async function doRequest<T = any>(
 // -- USERS --
 //
 const UPDATE_SELF_USER_TOOL: Tool = {
-  name: "orchestra_update_self_user",
+  name: "splashtodo_update_self_user",
   description:
     "Update the authenticated user's data (e.g., name, about, visibility).",
   inputSchema: {
@@ -89,7 +89,7 @@ const UPDATE_SELF_USER_TOOL: Tool = {
 };
 
 const READ_ONE_USER_TOOL: Tool = {
-  name: "orchestra_read_one_user",
+  name: "splashtodo_read_one_user",
   description:
     "Get data for a single user by ID. If the ID matches the caller, returns additional fields.",
   inputSchema: {
@@ -108,7 +108,7 @@ const READ_ONE_USER_TOOL: Tool = {
 // -- LISTS --
 //
 const CREATE_LIST_TOOL: Tool = {
-  name: "orchestra_create_list",
+  name: "splashtodo_create_list",
   description: "Create a new list",
   inputSchema: {
     type: "object",
@@ -137,7 +137,7 @@ const CREATE_LIST_TOOL: Tool = {
 };
 
 const UPDATE_LIST_TOOL: Tool = {
-  name: "orchestra_update_list",
+  name: "splashtodo_update_list",
   description: "Update an existing list by ID",
   inputSchema: {
     type: "object",
@@ -181,7 +181,7 @@ const UPDATE_LIST_TOOL: Tool = {
 };
 
 const DESTROY_LIST_TOOL: Tool = {
-  name: "orchestra_destroy_list",
+  name: "splashtodo_destroy_list",
   description:
     "Delete a list by ID. The user must own this list or be authorized to remove it. All items for the list will be deleted as well.",
   inputSchema: {
@@ -197,7 +197,7 @@ const DESTROY_LIST_TOOL: Tool = {
 };
 
 const READ_ONE_LIST_TOOL: Tool = {
-  name: "orchestra_read_one_list",
+  name: "splashtodo_read_one_list",
   description: "Get a single list by ID for the authenticated user",
   inputSchema: {
     type: "object",
@@ -212,7 +212,7 @@ const READ_ONE_LIST_TOOL: Tool = {
 };
 
 const READ_LISTS_TOOL: Tool = {
-  name: "orchestra_read_lists",
+  name: "splashtodo_read_lists",
   description: "Get all lists for the authenticated user, optionally paginated",
   inputSchema: {
     type: "object",
@@ -233,7 +233,7 @@ const READ_LISTS_TOOL: Tool = {
 // -- ITEMS --
 //
 const CREATE_ITEMS_TOOL: Tool = {
-  name: "orchestra_create_items",
+  name: "splashtodo_create_items",
   description: "Create one or more new item(s) for a given list",
   inputSchema: {
     type: "object",
@@ -256,7 +256,7 @@ const CREATE_ITEMS_TOOL: Tool = {
 };
 
 const READ_ITEMS_TOOL: Tool = {
-  name: "orchestra_read_items",
+  name: "splashtodo_read_items",
   description:
     "Get items for the authenticated user, optionally filtered by list_id or paginated (list_id is required).",
   inputSchema: {
@@ -281,7 +281,7 @@ const READ_ITEMS_TOOL: Tool = {
 };
 
 const READ_ONE_ITEM_TOOL: Tool = {
-  name: "orchestra_read_one_item",
+  name: "splashtodo_read_one_item",
   description: "Get a single item by ID for the authenticated user",
   inputSchema: {
     type: "object",
@@ -296,7 +296,7 @@ const READ_ONE_ITEM_TOOL: Tool = {
 };
 
 const UPDATE_ITEM_TOOL: Tool = {
-  name: "orchestra_update_item",
+  name: "splashtodo_update_item",
   description: "Update an existing item (name, status, outcome, etc.) by ID",
   inputSchema: {
     type: "object",
@@ -331,7 +331,7 @@ const UPDATE_ITEM_TOOL: Tool = {
 };
 
 const DESTROY_ITEM_TOOL: Tool = {
-  name: "orchestra_destroy_item",
+  name: "splashtodo_destroy_item",
   description:
     "Delete an item by ID. The user must own this item or be authorized to remove it.",
   inputSchema: {
@@ -350,7 +350,7 @@ const DESTROY_ITEM_TOOL: Tool = {
 // -- CONTEXT (GET /context) --
 //
 const GET_STORY_CONTEXT_TOOL: Tool = {
-  name: "orchestra_get_story_context",
+  name: "splashtodo_get_story_context",
   description:
     "Fetch story context for a given list and item, optionally passing user feedback.",
   inputSchema: {
@@ -377,7 +377,7 @@ const GET_STORY_CONTEXT_TOOL: Tool = {
 // -- STORIES --
 //
 const READ_STORIES_TOOL: Tool = {
-  name: "orchestra_read_stories",
+  name: "splashtodo_read_stories",
   description:
     "Retrieve multiple stories, filtered by list_id and item_id (both required). Supports pagination.",
   inputSchema: {
@@ -405,7 +405,7 @@ const READ_STORIES_TOOL: Tool = {
 };
 
 const CREATE_STORY_TOOL: Tool = {
-  name: "orchestra_create_story",
+  name: "splashtodo_create_story",
   description: "Create a new story for a given list and item.",
   inputSchema: {
     type: "object",
@@ -432,7 +432,7 @@ const CREATE_STORY_TOOL: Tool = {
 };
 
 const READ_ONE_STORY_TOOL: Tool = {
-  name: "orchestra_read_one_story",
+  name: "splashtodo_read_one_story",
   description: "Retrieve a single story by ID",
   inputSchema: {
     type: "object",
@@ -451,7 +451,7 @@ const READ_ONE_STORY_TOOL: Tool = {
 // -----------------------------------------
 const server = new Server(
   {
-    name: "orchestra8-mcp-server",
+    name: "splashtodo-mcp-server",
     version: "0.1.0",
   },
   {
@@ -507,10 +507,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       // ---------- USERS ----------
-      case "orchestra_update_self_user": {
+      case "splashtodo_update_self_user": {
         // PATCH /users
         // body => { name?, about?, visibility? }
-        const url = `${ORCHESTRA8_API_BASE_URL}/users`;
+        const url = `${SPLASHTODO_API_BASE_URL}/users`;
         const result = await doRequest(url, "PATCH", {
           name: args.name,
           about: args.about,
@@ -527,10 +527,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_one_user": {
+      case "splashtodo_read_one_user": {
         // GET /users/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/users/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/users/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -544,10 +544,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- LISTS ----------
-      case "orchestra_create_list": {
+      case "splashtodo_create_list": {
         // POST /lists
         // body => { name, description?, story_mode?, belief_mode? }
-        const url = `${ORCHESTRA8_API_BASE_URL}/lists`;
+        const url = `${SPLASHTODO_API_BASE_URL}/lists`;
         const result = await doRequest(url, "POST", {
           name: args.name,
           description: args.description,
@@ -565,10 +565,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_update_list": {
+      case "splashtodo_update_list": {
         // PATCH /lists/{id}
         // body => { name?, status?, description?, outcome?, evidence?, story_mode?, belief_mode? }
-        const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -607,10 +607,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_destroy_list": {
+      case "splashtodo_destroy_list": {
         // DELETE /lists/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
@@ -623,13 +623,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_lists": {
+      case "splashtodo_read_lists": {
         // GET /lists
         // query => { page, limit }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${ORCHESTRA8_API_BASE_URL}/lists?${params.toString()}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/lists?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -642,10 +642,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_one_list": {
+      case "splashtodo_read_one_list": {
         // GET /lists/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/lists/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -659,10 +659,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- ITEMS ----------
-      case "orchestra_create_items": {
+      case "splashtodo_create_items": {
         // POST /items
         // body => { items: [ { list_id, name, status? }, ... ] }
-        const url = `${ORCHESTRA8_API_BASE_URL}/items`;
+        const url = `${SPLASHTODO_API_BASE_URL}/items`;
         const listId = args.list_id;
         let items = args.items;
         if (typeof items === "string") {
@@ -685,14 +685,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_items": {
+      case "splashtodo_read_items": {
         // GET /items
         // query => { page, limit, list_id (required) }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
         params.set("list_id", `${args.list_id}`);
-        const url = `${ORCHESTRA8_API_BASE_URL}/items?${params.toString()}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/items?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -705,10 +705,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_one_item": {
+      case "splashtodo_read_one_item": {
         // GET /items/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -721,10 +721,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_update_item": {
+      case "splashtodo_update_item": {
         // PATCH /items/{id}
         // body => { name?, status?, outcome?, evidence? }
-        const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -755,10 +755,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_destroy_item": {
+      case "splashtodo_destroy_item": {
         // DELETE /items/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/items/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
@@ -772,7 +772,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- CONTEXT ----------
-      case "orchestra_get_story_context": {
+      case "splashtodo_get_story_context": {
         // GET /context
         // query => { listId, itemId, feedback? }
         const params = new URLSearchParams();
@@ -781,7 +781,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.feedback) {
           params.set("feedback", `${args.feedback}`);
         }
-        const url = `${ORCHESTRA8_API_BASE_URL}/context?${params.toString()}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/context?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -795,7 +795,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- STORIES ----------
-      case "orchestra_read_stories": {
+      case "splashtodo_read_stories": {
         // GET /stories
         // query => { page?, limit?, list_id, item_id }
         const params = new URLSearchParams();
@@ -803,7 +803,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.limit) params.set("limit", `${args.limit}`);
         params.set("list_id", `${args.list_id}`);
         params.set("item_id", `${args.item_id}`);
-        const url = `${ORCHESTRA8_API_BASE_URL}/stories?${params.toString()}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/stories?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -816,10 +816,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_create_story": {
+      case "splashtodo_create_story": {
         // POST /stories
         // body => { list_id, item_id, title, story_text }
-        const url = `${ORCHESTRA8_API_BASE_URL}/stories`;
+        const url = `${SPLASHTODO_API_BASE_URL}/stories`;
         const body = {
           list_id: args.list_id,
           item_id: args.item_id,
@@ -838,10 +838,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "orchestra_read_one_story": {
+      case "splashtodo_read_one_story": {
         // GET /stories/{id}
         // args: { id: string }
-        const url = `${ORCHESTRA8_API_BASE_URL}/stories/${args.id}`;
+        const url = `${SPLASHTODO_API_BASE_URL}/stories/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -882,7 +882,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Orchestra8 MCP Server running on stdio");
+  console.error("Splash ToDo MCP Server running on stdio");
 }
 
 runServer().catch((error) => {
