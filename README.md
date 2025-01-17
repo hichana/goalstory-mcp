@@ -1,8 +1,8 @@
-# Splash Todo MCP Server
+# Goal Storying MCP Server
 
 ## Get an API key
 
-Go to [SplashToDo.com](https://www.splashtodo.com/) to sign up/in and get a free API key.
+Go to [GoalStory.ing](https://www.goalstory.ing/) to sign up/in and get a free API key.
 
 ## Server config
 
@@ -11,6 +11,6 @@ The last two args are picked up in the MCP server and utilized like env vars. Th
 ```
 "orchestra8": {
     "command": "npx",
-    "args": ["-y", "splashtodo-mcp", "https://prod-orchestra8-xtqi.encr.app", "your-api-key"]
+    "args": ["-y", "goalstorying-mcp", "https://prod-orchestra8-xtqi.encr.app", "your-api-key"]
 }
 ```

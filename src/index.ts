@@ -13,17 +13,19 @@ import axios from "axios";
 // 1. Environment variables & basic setup with helper
 // -----------------------------------------
 const argv = process.argv.slice(2);
-const SPLASHTODO_API_BASE_URL = argv[0];
-const SPLASHTODO_API_TOKEN = argv[1];
+const GOALSTORYING_API_BASE_URL = argv[0];
+const GOALSTORYING_API_TOKEN = argv[1];
 
-if (!SPLASHTODO_API_BASE_URL) {
+if (!GOALSTORYING_API_BASE_URL) {
   console.error(
-    "Error: SPLASHTODO_API_BASE_URL environment variable is required"
+    "Error: GOALSTORYING_API_BASE_URL environment variable is required"
   );
   process.exit(1);
 }
-if (!SPLASHTODO_API_TOKEN) {
-  console.error("Error: SPLASHTODO_API_TOKEN environment variable is required");
+if (!GOALSTORYING_API_TOKEN) {
+  console.error(
+    "Error: GOALSTORYING_API_TOKEN environment variable is required"
+  );
   process.exit(1);
 }
 
@@ -39,7 +41,7 @@ async function doRequest<T = any>(
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${SPLASHTODO_API_TOKEN}`,
+        Authorization: `Bearer ${GOALSTORYING_API_TOKEN}`,
       },
       data: body,
     });
@@ -65,7 +67,7 @@ async function doRequest<T = any>(
 // -- USERS --
 //
 const UPDATE_SELF_USER_TOOL: Tool = {
-  name: "splashtodo_update_self_user",
+  name: "goalstorying_update_self_user",
   description:
     "Update the authenticated user's data (e.g., name, about, visibility).",
   inputSchema: {
@@ -89,7 +91,7 @@ const UPDATE_SELF_USER_TOOL: Tool = {
 };
 
 const READ_ONE_USER_TOOL: Tool = {
-  name: "splashtodo_read_one_user",
+  name: "goalstorying_read_one_user",
   description:
     "Get data for a single user by ID. If the ID matches the caller, returns additional fields.",
   inputSchema: {
@@ -105,21 +107,21 @@ const READ_ONE_USER_TOOL: Tool = {
 };
 
 //
-// -- LISTS --
+// -- GOALS --
 //
-const CREATE_LIST_TOOL: Tool = {
-  name: "splashtodo_create_list",
-  description: "Create a new list",
+const CREATE_GOAL_TOOL: Tool = {
+  name: "goalstorying_create_goal",
+  description: "Create a new goal",
   inputSchema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "The name/title for this new list",
+        description: "The name/title for this new goal",
       },
       description: {
         type: "string",
-        description: "Optional descriptive text for this list",
+        description: "Optional descriptive text for this goal",
       },
       story_mode: {
         type: "number",
@@ -136,15 +138,15 @@ const CREATE_LIST_TOOL: Tool = {
   },
 };
 
-const UPDATE_LIST_TOOL: Tool = {
-  name: "splashtodo_update_list",
-  description: "Update an existing list by ID",
+const UPDATE_GOAL_TOOL: Tool = {
+  name: "goalstorying_update_goal",
+  description: "Update an existing goal by ID",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which list ID to update",
+        description: "Which goal ID to update",
       },
       name: {
         type: "string",
@@ -164,7 +166,7 @@ const UPDATE_LIST_TOOL: Tool = {
       },
       evidence: {
         type: "string",
-        description: "Updated evidence for this list (optional)",
+        description: "Updated evidence for this goal (optional)",
       },
       story_mode: {
         type: "number",
@@ -180,40 +182,40 @@ const UPDATE_LIST_TOOL: Tool = {
   },
 };
 
-const DESTROY_LIST_TOOL: Tool = {
-  name: "splashtodo_destroy_list",
+const DESTROY_GOAL_TOOL: Tool = {
+  name: "goalstorying_destroy_goal",
   description:
-    "Delete a list by ID. The user must own this list or be authorized to remove it. All items for the list will be deleted as well.",
+    "Delete a goal by ID. The user must own this goal or be authorized to remove it. All steps for the goal will be deleted as well.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which list ID to delete",
+        description: "Which goal ID to delete",
       },
     },
     required: ["id"],
   },
 };
 
-const READ_ONE_LIST_TOOL: Tool = {
-  name: "splashtodo_read_one_list",
-  description: "Get a single list by ID for the authenticated user",
+const READ_ONE_GOAL_TOOL: Tool = {
+  name: "goalstorying_read_one_goal",
+  description: "Get a single goal by ID for the authenticated user",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which list ID to retrieve",
+        description: "Which goal ID to retrieve",
       },
     },
     required: ["id"],
   },
 };
 
-const READ_LISTS_TOOL: Tool = {
-  name: "splashtodo_read_lists",
-  description: "Get all lists for the authenticated user, optionally paginated",
+const READ_GOALS_TOOL: Tool = {
+  name: "goalstorying_read_goals",
+  description: "Get all goals for the authenticated user, optionally paginated",
   inputSchema: {
     type: "object",
     properties: {
@@ -223,43 +225,42 @@ const READ_LISTS_TOOL: Tool = {
       },
       limit: {
         type: "number",
-        description: "Number of items per page (optional)",
+        description: "Number of steps per page (optional)",
       },
     },
   },
 };
 
 //
-// -- ITEMS --
+// -- STEPS --
 //
-const CREATE_ITEMS_TOOL: Tool = {
-  name: "splashtodo_create_items",
-  description:
-    "Create one or more **new** ordered items for a given list (highest priority first and least priority last)",
+const CREATE_STEPS_TOOL: Tool = {
+  name: "goalstorying_create_steps",
+  description: "Create one or more new step(s) for a given goal",
   inputSchema: {
     type: "object",
     properties: {
-      list_id: {
+      goal_id: {
         type: "string",
-        description: "The list ID in which to create the item",
+        description: "The goal ID in which to create the step",
       },
-      items: {
+      steps: {
         type: "array",
-        description: "An array of items to create.",
-        items: {
+        description: "An array of steps to create.",
+        steps: {
           type: "string",
-          description: "The name/title of the new item",
+          description: "The name/title of the new step",
         },
       },
     },
-    required: ["list_id, items"],
+    required: ["goal_id, steps"],
   },
 };
 
-const READ_ITEMS_TOOL: Tool = {
-  name: "splashtodo_read_items",
+const READ_STEPS_TOOL: Tool = {
+  name: "goalstorying_read_steps",
   description:
-    "Get items for the authenticated user, optionally filtered by list_id or paginated (list_id is required).",
+    "Get steps for the authenticated user, optionally filtered by goal_id or paginated (goal_id is required).",
   inputSchema: {
     type: "object",
     properties: {
@@ -269,46 +270,46 @@ const READ_ITEMS_TOOL: Tool = {
       },
       limit: {
         type: "number",
-        description: "Number of items per page (optional)",
+        description: "Number of steps per page (optional)",
       },
-      list_id: {
+      goal_id: {
         type: "string",
         description:
-          "The list ID filter: only items from this list are returned (required)",
+          "The goal ID filter: only steps from this goal are returned (required)",
       },
     },
-    required: ["list_id"],
+    required: ["goal_id"],
   },
 };
 
-const READ_ONE_ITEM_TOOL: Tool = {
-  name: "splashtodo_read_one_item",
-  description: "Get a single item by ID for the authenticated user",
+const READ_ONE_STEP_TOOL: Tool = {
+  name: "goalstorying_read_one_step",
+  description: "Get a single step by ID for the authenticated user",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which item ID to retrieve",
+        description: "Which step ID to retrieve",
       },
     },
     required: ["id"],
   },
 };
 
-const UPDATE_ITEM_TOOL: Tool = {
-  name: "splashtodo_update_item",
-  description: "Update an existing item (name, status, outcome, etc.) by ID",
+const UPDATE_STEP_TOOL: Tool = {
+  name: "goalstorying_update_step",
+  description: "Update an existing step (name, status, outcome, etc.) by ID",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which item ID to update",
+        description: "Which step ID to update",
       },
       name: {
         type: "string",
-        description: "Updated name/title of the item (optional)",
+        description: "Updated name/title of the step (optional)",
       },
       status: {
         type: "number",
@@ -316,7 +317,7 @@ const UPDATE_ITEM_TOOL: Tool = {
       },
       outcome: {
         type: "string",
-        description: "Updated outcome for this item (optional)",
+        description: "Updated outcome for this step (optional)",
       },
       evidence: {
         type: "string",
@@ -324,23 +325,23 @@ const UPDATE_ITEM_TOOL: Tool = {
       },
       notes: {
         type: "string",
-        description: "Markdown formatted notes for the item.",
+        description: "Markdown formatted notes for the step.",
       },
     },
     required: ["id"],
   },
 };
 
-const DESTROY_ITEM_TOOL: Tool = {
-  name: "splashtodo_destroy_item",
+const DESTROY_STEP_TOOL: Tool = {
+  name: "goalstorying_destroy_step",
   description:
-    "Delete an item by ID. The user must own this item or be authorized to remove it.",
+    "Delete an step by ID. The user must own this step or be authorized to remove it.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which item ID to delete",
+        description: "Which step ID to delete",
       },
     },
     required: ["id"],
@@ -351,26 +352,26 @@ const DESTROY_ITEM_TOOL: Tool = {
 // -- CONTEXT (GET /context) --
 //
 const GET_STORY_CONTEXT_TOOL: Tool = {
-  name: "splashtodo_get_story_context",
+  name: "goalstorying_get_story_context",
   description:
-    "Fetch story context for a given list and item, optionally passing user feedback.",
+    "Fetch story context for a given goal and step, optionally passing user feedback.",
   inputSchema: {
     type: "object",
     properties: {
-      listId: {
+      goalId: {
         type: "string",
-        description: "The list ID associated with the context",
+        description: "The goal ID associated with the context",
       },
-      itemId: {
+      stepId: {
         type: "string",
-        description: "The item ID associated with the context",
+        description: "The step ID associated with the context",
       },
       feedback: {
         type: "string",
         description: "Optional user feedback that may affect the context",
       },
     },
-    required: ["listId", "itemId"],
+    required: ["goalId", "stepId"],
   },
 };
 
@@ -378,9 +379,9 @@ const GET_STORY_CONTEXT_TOOL: Tool = {
 // -- STORIES --
 //
 const READ_STORIES_TOOL: Tool = {
-  name: "splashtodo_read_stories",
+  name: "goalstorying_read_stories",
   description:
-    "Retrieve multiple stories, filtered by list_id and item_id (both required). Supports pagination.",
+    "Retrieve multiple stories, filtered by goal_id and step_id (both required). Supports pagination.",
   inputSchema: {
     type: "object",
     properties: {
@@ -392,32 +393,32 @@ const READ_STORIES_TOOL: Tool = {
         type: "number",
         description: "Number of results per page (optional)",
       },
-      list_id: {
+      goal_id: {
         type: "string",
-        description: "Only stories that belong to this list",
+        description: "Only stories that belong to this goal",
       },
-      item_id: {
+      step_id: {
         type: "string",
-        description: "Only stories that belong to this item",
+        description: "Only stories that belong to this step",
       },
     },
-    required: ["list_id", "item_id"],
+    required: ["goal_id", "step_id"],
   },
 };
 
 const CREATE_STORY_TOOL: Tool = {
-  name: "splashtodo_create_story",
-  description: "Create a new story for a given list and item.",
+  name: "goalstorying_create_story",
+  description: "Create a new story for a given goal and step.",
   inputSchema: {
     type: "object",
     properties: {
-      list_id: {
+      goal_id: {
         type: "string",
-        description: "The list ID for which this story is created",
+        description: "The goal ID for which this story is created",
       },
-      item_id: {
+      step_id: {
         type: "string",
-        description: "The item ID for which this story is created",
+        description: "The step ID for which this story is created",
       },
       title: {
         type: "string",
@@ -428,12 +429,12 @@ const CREATE_STORY_TOOL: Tool = {
         description: "The text content of the new story",
       },
     },
-    required: ["list_id", "item_id", "title", "story_text"],
+    required: ["goal_id", "step_id", "title", "story_text"],
   },
 };
 
 const READ_ONE_STORY_TOOL: Tool = {
-  name: "splashtodo_read_one_story",
+  name: "goalstorying_read_one_story",
   description: "Retrieve a single story by ID",
   inputSchema: {
     type: "object",
@@ -452,7 +453,7 @@ const READ_ONE_STORY_TOOL: Tool = {
 // -----------------------------------------
 const server = new Server(
   {
-    name: "splashtodo-mcp-server",
+    name: "goalstorying-mcp-server",
     version: "0.1.0",
   },
   {
@@ -469,19 +470,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     UPDATE_SELF_USER_TOOL,
     READ_ONE_USER_TOOL,
 
-    // LISTS
-    CREATE_LIST_TOOL,
-    UPDATE_LIST_TOOL,
-    DESTROY_LIST_TOOL,
-    READ_LISTS_TOOL,
-    READ_ONE_LIST_TOOL,
+    // GOALS
+    CREATE_GOAL_TOOL,
+    UPDATE_GOAL_TOOL,
+    DESTROY_GOAL_TOOL,
+    READ_GOALS_TOOL,
+    READ_ONE_GOAL_TOOL,
 
-    // ITEMS
-    CREATE_ITEMS_TOOL,
-    READ_ITEMS_TOOL,
-    READ_ONE_ITEM_TOOL,
-    UPDATE_ITEM_TOOL,
-    DESTROY_ITEM_TOOL,
+    // STEPS
+    CREATE_STEPS_TOOL,
+    READ_STEPS_TOOL,
+    READ_ONE_STEP_TOOL,
+    UPDATE_STEP_TOOL,
+    DESTROY_STEP_TOOL,
 
     // CONTEXT
     GET_STORY_CONTEXT_TOOL,
@@ -508,10 +509,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       // ---------- USERS ----------
-      case "splashtodo_update_self_user": {
+      case "goalstorying_update_self_user": {
         // PATCH /users
         // body => { name?, about?, visibility? }
-        const url = `${SPLASHTODO_API_BASE_URL}/users`;
+        const url = `${GOALSTORYING_API_BASE_URL}/users`;
         const result = await doRequest(url, "PATCH", {
           name: args.name,
           about: args.about,
@@ -528,10 +529,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "splashtodo_read_one_user": {
+      case "goalstorying_read_one_user": {
         // GET /users/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/users/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/users/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -544,11 +545,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      // ---------- LISTS ----------
-      case "splashtodo_create_list": {
-        // POST /lists
+      // ---------- GOALS ----------
+      case "goalstorying_create_goal": {
+        // POST /goals
         // body => { name, description?, story_mode?, belief_mode? }
-        const url = `${SPLASHTODO_API_BASE_URL}/lists`;
+        const url = `${GOALSTORYING_API_BASE_URL}/goals`;
         const result = await doRequest(url, "POST", {
           name: args.name,
           description: args.description,
@@ -559,17 +560,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: `List created:\n${JSON.stringify(result, null, 2)}`,
+              text: `Goal created:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_update_list": {
-        // PATCH /lists/{id}
+      case "goalstorying_update_goal": {
+        // PATCH /goals/{id}
         // body => { name?, status?, description?, outcome?, evidence?, story_mode?, belief_mode? }
-        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -601,131 +602,131 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: `List updated:\n${JSON.stringify(result, null, 2)}`,
+              text: `Goal updated:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_destroy_list": {
-        // DELETE /lists/{id}
+      case "goalstorying_destroy_goal": {
+        // DELETE /goals/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
             {
               type: "text",
-              text: `List deleted:\n${JSON.stringify(result, null, 2)}`,
+              text: `Goal deleted:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_read_lists": {
-        // GET /lists
+      case "goalstorying_read_goals": {
+        // GET /goals
         // query => { page, limit }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${SPLASHTODO_API_BASE_URL}/lists?${params.toString()}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/goals?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
             {
               type: "text",
-              text: `Lists retrieved:\n${JSON.stringify(result, null, 2)}`,
+              text: `Goals retrieved:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_read_one_list": {
-        // GET /lists/{id}
+      case "goalstorying_read_one_goal": {
+        // GET /goals/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/lists/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
             {
               type: "text",
-              text: `List data:\n${JSON.stringify(result, null, 2)}`,
+              text: `Goal data:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      // ---------- ITEMS ----------
-      case "splashtodo_create_items": {
-        // POST /items
-        // body => { items: [ { list_id, name, status? }, ... ] }
-        const url = `${SPLASHTODO_API_BASE_URL}/items`;
-        const listId = args.list_id;
-        let items = args.items;
-        if (typeof items === "string") {
-          const itemsAreAString = items as string;
-          items = itemsAreAString.split(",");
+      // ---------- STEPS ----------
+      case "goalstorying_create_steps": {
+        // POST /steps
+        // body => { steps: [ { goal_id, name, status? }, ... ] }
+        const url = `${GOALSTORYING_API_BASE_URL}/steps`;
+        const goalId = args.goal_id;
+        let steps = args.steps;
+        if (typeof steps === "string") {
+          const stepsAreAString = steps as string;
+          steps = stepsAreAString.split(",");
         }
         const result = await doRequest(url, "POST", {
-          list_id: listId,
-          items,
+          goal_id: goalId,
+          steps,
         });
 
         return {
           content: [
             {
               type: "text",
-              text: `Item(s) created:\n${JSON.stringify(result, null, 2)}`,
+              text: `Step(s) created:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_read_items": {
-        // GET /items
-        // query => { page, limit, list_id (required) }
+      case "goalstorying_read_steps": {
+        // GET /steps
+        // query => { page, limit, goal_id (required) }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
-        params.set("list_id", `${args.list_id}`);
-        const url = `${SPLASHTODO_API_BASE_URL}/items?${params.toString()}`;
+        params.set("goal_id", `${args.goal_id}`);
+        const url = `${GOALSTORYING_API_BASE_URL}/steps?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
             {
               type: "text",
-              text: `Items retrieved:\n${JSON.stringify(result, null, 2)}`,
+              text: `Steps retrieved:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_read_one_item": {
-        // GET /items/{id}
+      case "goalstorying_read_one_step": {
+        // GET /steps/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
             {
               type: "text",
-              text: `Item data:\n${JSON.stringify(result, null, 2)}`,
+              text: `Step data:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_update_item": {
-        // PATCH /items/{id}
+      case "goalstorying_update_step": {
+        // PATCH /steps/{id}
         // body => { name?, status?, outcome?, evidence? }
-        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -749,23 +750,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: `Item updated:\n${JSON.stringify(result, null, 2)}`,
+              text: `Step updated:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
         };
       }
 
-      case "splashtodo_destroy_item": {
-        // DELETE /items/{id}
+      case "goalstorying_destroy_step": {
+        // DELETE /steps/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/items/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
             {
               type: "text",
-              text: `Item deleted:\n${JSON.stringify(result, null, 2)}`,
+              text: `Step deleted:\n${JSON.stringify(result, null, 2)}`,
             },
           ],
           isError: false,
@@ -773,16 +774,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- CONTEXT ----------
-      case "splashtodo_get_story_context": {
+      case "goalstorying_get_story_context": {
         // GET /context
-        // query => { listId, itemId, feedback? }
+        // query => { goalId, stepId, feedback? }
         const params = new URLSearchParams();
-        params.set("listId", `${args.listId}`);
-        params.set("itemId", `${args.itemId}`);
+        params.set("goalId", `${args.goalId}`);
+        params.set("stepId", `${args.stepId}`);
         if (args.feedback) {
           params.set("feedback", `${args.feedback}`);
         }
-        const url = `${SPLASHTODO_API_BASE_URL}/context?${params.toString()}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/context?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -796,15 +797,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- STORIES ----------
-      case "splashtodo_read_stories": {
+      case "goalstorying_read_stories": {
         // GET /stories
-        // query => { page?, limit?, list_id, item_id }
+        // query => { page?, limit?, goal_id, step_id }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
-        params.set("list_id", `${args.list_id}`);
-        params.set("item_id", `${args.item_id}`);
-        const url = `${SPLASHTODO_API_BASE_URL}/stories?${params.toString()}`;
+        params.set("goal_id", `${args.goal_id}`);
+        params.set("step_id", `${args.step_id}`);
+        const url = `${GOALSTORYING_API_BASE_URL}/stories?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -817,13 +818,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "splashtodo_create_story": {
+      case "goalstorying_create_story": {
         // POST /stories
-        // body => { list_id, item_id, title, story_text }
-        const url = `${SPLASHTODO_API_BASE_URL}/stories`;
+        // body => { goal_id, step_id, title, story_text }
+        const url = `${GOALSTORYING_API_BASE_URL}/stories`;
         const body = {
-          list_id: args.list_id,
-          item_id: args.item_id,
+          goal_id: args.goal_id,
+          step_id: args.step_id,
           title: args.title,
           story_text: args.story_text,
         };
@@ -839,10 +840,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "splashtodo_read_one_story": {
+      case "goalstorying_read_one_story": {
         // GET /stories/{id}
         // args: { id: string }
-        const url = `${SPLASHTODO_API_BASE_URL}/stories/${args.id}`;
+        const url = `${GOALSTORYING_API_BASE_URL}/stories/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
