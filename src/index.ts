@@ -124,14 +124,12 @@ const CREATE_GOAL_TOOL: Tool = {
         description: "Optional descriptive text for this goal",
       },
       story_mode: {
-        type: "number",
-        description:
-          "Optional story mode (0=adventure, 1=continuity). Omit if not updating.",
+        type: "string",
+        description: "Optional story mode. Omit if not updating.",
       },
       belief_mode: {
-        type: "number",
-        description:
-          "Optional belief mode (0=Christianity, 1=Many Worlds). Omit if not updating.",
+        type: "string",
+        description: "Optional belief mode. Omit if not updating.",
       },
     },
     required: ["name"],
@@ -169,13 +167,12 @@ const UPDATE_GOAL_TOOL: Tool = {
         description: "Updated evidence for this goal (optional)",
       },
       story_mode: {
-        type: "number",
-        description: "Updated story mode: 0=adventure, 1=continuity (optional)",
+        type: "string",
+        description: "Updated story mode (optional)",
       },
       belief_mode: {
-        type: "number",
-        description:
-          "Updated belief mode: 0=Christianity, 1=Many Worlds (optional)",
+        type: "string",
+        description: "Updated belief mode (optional)",
       },
     },
     required: ["id"],
