@@ -1,6 +1,6 @@
 {
   "name": "goalstory-mcp",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "MCP server for achieving your goals with visualization.",
   "main": "dist/index.js",
   "type": "module",
