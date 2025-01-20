@@ -13,19 +13,17 @@ import axios from "axios";
 // 1. Environment variables & basic setup with helper
 // -----------------------------------------
 const argv = process.argv.slice(2);
-const GOALSTORYING_API_BASE_URL = argv[0];
-const GOALSTORYING_API_TOKEN = argv[1];
+const GOALSTORY_API_BASE_URL = argv[0];
+const GOALSTORY_API_TOKEN = argv[1];
 
-if (!GOALSTORYING_API_BASE_URL) {
+if (!GOALSTORY_API_BASE_URL) {
   console.error(
-    "Error: GOALSTORYING_API_BASE_URL environment variable is required"
+    "Error: GOALSTORY_API_BASE_URL environment variable is required"
   );
   process.exit(1);
 }
-if (!GOALSTORYING_API_TOKEN) {
-  console.error(
-    "Error: GOALSTORYING_API_TOKEN environment variable is required"
-  );
+if (!GOALSTORY_API_TOKEN) {
+  console.error("Error: GOALSTORY_API_TOKEN environment variable is required");
   process.exit(1);
 }
 
@@ -41,7 +39,7 @@ async function doRequest<T = any>(
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${GOALSTORYING_API_TOKEN}`,
+        Authorization: `Bearer ${GOALSTORY_API_TOKEN}`,
       },
       data: body,
     });
@@ -67,42 +65,39 @@ async function doRequest<T = any>(
 // -- USERS --
 //
 const UPDATE_SELF_USER_TOOL: Tool = {
-  name: "goalstorying_update_self_user",
-  description:
-    "Update the authenticated user's data (e.g., name, about, visibility).",
+  name: "goalstory_update_self_user",
+  description: `Update the user (e.g., 'name', details about the user like who they are,
+  their intrinsic motivators, and any detail that will help generate 
+  personalized Goal Story Goals, Steps and Stories in 'about', or their 'visibility').
+  `,
   inputSchema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "The updated name for the user (optional).",
+        description: "The **updated** 'name' of the user (optional).",
       },
       about: {
         type: "string",
-        description: "Updated 'about' information (optional).",
+        description: `The **updated** 'about' information, with details about the user like who they are,
+        their intrinsic motivators, and any detail that will help generate 
+        personalized Goal Story Goals, Steps and Stories. (optional)`,
       },
       visibility: {
         type: "number",
         description:
-          "Updated visibility status: 0 = public, 1 = private (optional).",
+          "The **updated** visibility status. 0 = public, 1 = private (optional).",
       },
     },
   },
 };
 
-const READ_ONE_USER_TOOL: Tool = {
-  name: "goalstorying_read_one_user",
-  description:
-    "Get data for a single user by ID. If the ID matches the caller, returns additional fields.",
+const READ_SELF_USER_TOOL: Tool = {
+  name: "goalstory_read_one_user",
+  description: "Get data for the current user.",
   inputSchema: {
     type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "The user ID to retrieve",
-      },
-    },
-    required: ["id"],
+    properties: {},
   },
 };
 
@@ -110,28 +105,40 @@ const READ_ONE_USER_TOOL: Tool = {
 // -- GOALS --
 //
 const CREATE_GOAL_TOOL: Tool = {
-  name: "goalstorying_create_goal",
-  description: "Create a new goal",
+  name: "goalstory_create_goal",
+  description: `Create a Goal in Goal Story for the user that reflects their personal motivations and 
+  aspirations. If they have not already done so, the user is encouraced to provide as much personal 
+  detail about who they are and their intrinsic motivators as possible through the 
+  'goalstory_update_self_user' tool. Detailed information about the user can be retrieved via the 
+  'goalstory_read_one_uesr' tool. If a goal is presented to the user, it should always be followed 
+  up by offering to save the Goal to Goal Story. Goals should be well-detailed so that 
+  Goal Story can later generate a set of steps that will help the user achieve it.
+  `,
   inputSchema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "The name/title for this new goal",
+        description: "The name/title for the new goal.",
       },
       description: {
         type: "string",
-        description: "Optional descriptive text for this goal",
+        description: "A description of the **new** goal in detail if possible.",
       },
       story_mode: {
-        type: "number",
-        description:
-          "Optional story mode (0=adventure, 1=continuity). Omit if not updating.",
+        type: "string",
+        description: `The 'mode' stories related to the **new** goal should be told in. For example 'adventure' mode 
+        would make each new story different from the last, possibly picking up where the last one 
+        left off and brining the user into a new setting or phase of the narrative. 'continuity' mode
+        might keep the narrative largely similar story to story, but change some details in order to 
+        keep the user engaged.`,
       },
       belief_mode: {
-        type: "number",
-        description:
-          "Optional belief mode (0=Christianity, 1=Many Worlds). Omit if not updating.",
+        type: "string",
+        description: `The user's personal beliefs that should will be used to tell a Story in Goal Story related to the **new** goal.
+        For example, if the user believes in a certain religion and it motivates them, they should include
+        it here so Stories can integrate that belief. If a user believes in a certain interpretation of 
+        quantum physics, like the 'Many Worlds' theory, they should describe their belife here.`,
       },
     },
     required: ["name"],
@@ -139,43 +146,47 @@ const CREATE_GOAL_TOOL: Tool = {
 };
 
 const UPDATE_GOAL_TOOL: Tool = {
-  name: "goalstorying_update_goal",
-  description: "Update an existing goal by ID",
+  name: "goalstory_update_goal",
+  description: `Update an existing goal by ID, especially resulting from encouraging the user 
+  to provide evidence they are on track to achieve their goal, and the final outcome having 
+  achieved their goal (once it is completed).`,
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which goal ID to update",
+        description: "The ID of the goal to update",
       },
       name: {
         type: "string",
-        description: "Updated name (optional)",
+        description: "The **updated** name/title of the goal.",
       },
       status: {
         type: "number",
-        description: "Updated status: 0=active, 1=archived (optional)",
+        description:
+          "The **updated** status of the goal. `0` = active, `1` = archived.",
       },
       description: {
         type: "string",
-        description: "Updated description (optional)",
+        description: "The **updated** detailed description of the goal",
       },
       outcome: {
         type: "string",
-        description: "Updated user's desired outcome in life (optional)",
+        description:
+          "An **update** with the outcome the user experienced achieving this goal.",
       },
       evidence: {
         type: "string",
-        description: "Updated evidence for this goal (optional)",
+        description:
+          "An **update** with evidence related to the user achieving the goal.",
       },
       story_mode: {
         type: "number",
-        description: "Updated story mode: 0=adventure, 1=continuity (optional)",
+        description: "The **updated** mode for the story format.",
       },
       belief_mode: {
         type: "number",
-        description:
-          "Updated belief mode: 0=Christianity, 1=Many Worlds (optional)",
+        description: "The **updated** belief mode.",
       },
     },
     required: ["id"],
@@ -183,15 +194,15 @@ const UPDATE_GOAL_TOOL: Tool = {
 };
 
 const DESTROY_GOAL_TOOL: Tool = {
-  name: "goalstorying_destroy_goal",
+  name: "goalstory_destroy_goal",
   description:
-    "Delete a goal by ID. The user must own this goal or be authorized to remove it. All steps for the goal will be deleted as well.",
+    "Delete a goal by ID. All steps for the goal will be deleted as well.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which goal ID to delete",
+        description: "The ID of the goal to delete",
       },
     },
     required: ["id"],
@@ -199,14 +210,14 @@ const DESTROY_GOAL_TOOL: Tool = {
 };
 
 const READ_ONE_GOAL_TOOL: Tool = {
-  name: "goalstorying_read_one_goal",
-  description: "Get a single goal by ID for the authenticated user",
+  name: "goalstory_read_one_goal",
+  description: "Get a single goal by ID.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which goal ID to retrieve",
+        description: "The ID of the goal to retrieve",
       },
     },
     required: ["id"],
@@ -214,8 +225,8 @@ const READ_ONE_GOAL_TOOL: Tool = {
 };
 
 const READ_GOALS_TOOL: Tool = {
-  name: "goalstorying_read_goals",
-  description: "Get all goals for the authenticated user, optionally paginated",
+  name: "goalstory_read_goals",
+  description: "Get all goals for the user, optionally paginated",
   inputSchema: {
     type: "object",
     properties: {
@@ -225,7 +236,7 @@ const READ_GOALS_TOOL: Tool = {
       },
       limit: {
         type: "number",
-        description: "Number of steps per page (optional)",
+        description: "Number of goals per page (optional)",
       },
     },
   },
@@ -235,21 +246,24 @@ const READ_GOALS_TOOL: Tool = {
 // -- STEPS --
 //
 const CREATE_STEPS_TOOL: Tool = {
-  name: "goalstorying_create_steps",
-  description: "Create one or more new step(s) for a given goal",
+  name: "goalstory_create_steps",
+  description: `Create one or more **new** ordered steps for a given goal 
+  (highest priority first and least priority last). Steps should outline the when, where, 
+  and how of actions needed to achieve a goal. If one or more steps are presented 
+  to the user, they should always be followed up by offering to save them to Goal Story.`,
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "The goal ID in which to create the step",
+        description: "The ID of the goal this **new** step belongs to.",
       },
       steps: {
         type: "array",
         description: "An array of steps to create.",
         steps: {
           type: "string",
-          description: "The name/title of the new step",
+          description: "The name/title of the **new** step.",
         },
       },
     },
@@ -258,9 +272,8 @@ const CREATE_STEPS_TOOL: Tool = {
 };
 
 const READ_STEPS_TOOL: Tool = {
-  name: "goalstorying_read_steps",
-  description:
-    "Get steps for the authenticated user, optionally filtered by goal_id or paginated (goal_id is required).",
+  name: "goalstory_read_steps",
+  description: "Get steps for a Goal, optionally paginated.",
   inputSchema: {
     type: "object",
     properties: {
@@ -274,8 +287,7 @@ const READ_STEPS_TOOL: Tool = {
       },
       goal_id: {
         type: "string",
-        description:
-          "The goal ID filter: only steps from this goal are returned (required)",
+        description: "Goal ID to filter retrieved steps by.",
       },
     },
     required: ["goal_id"],
@@ -283,14 +295,14 @@ const READ_STEPS_TOOL: Tool = {
 };
 
 const READ_ONE_STEP_TOOL: Tool = {
-  name: "goalstorying_read_one_step",
-  description: "Get a single step by ID for the authenticated user",
+  name: "goalstory_read_one_step",
+  description: "Get a single step by ID",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which step ID to retrieve",
+        description: "The ID of the step to retrieve",
       },
     },
     required: ["id"],
@@ -298,34 +310,37 @@ const READ_ONE_STEP_TOOL: Tool = {
 };
 
 const UPDATE_STEP_TOOL: Tool = {
-  name: "goalstorying_update_step",
-  description: "Update an existing step (name, status, outcome, etc.) by ID",
+  name: "goalstory_update_step",
+  description: `Update an existing step by ID, especially resulting from encouraging the user 
+  to provide evidence they are on track to complete the step, and the final outcome having 
+  completed the step (once it is completed).`,
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which step ID to update",
+        description: "The ID of the step to update",
       },
       name: {
         type: "string",
-        description: "Updated name/title of the step (optional)",
+        description: "The **updated** name/title of the step.",
       },
       status: {
         type: "number",
-        description: "Updated status code (0=pending, 1=complete) (optional)",
+        description:
+          "The **updated** status of the step. `0` = pending, `1` = complete.",
       },
       outcome: {
         type: "string",
-        description: "Updated outcome for this step (optional)",
+        description: "The **updated** outcome of the user's effort.",
       },
       evidence: {
         type: "string",
-        description: "Updated evidence or progress details (optional)",
+        description: "The **updated** evidence or details about progress.",
       },
       notes: {
         type: "string",
-        description: "Markdown formatted notes for the step.",
+        description: "The **updated** markdown formatted notes for the step.",
       },
     },
     required: ["id"],
@@ -333,15 +348,14 @@ const UPDATE_STEP_TOOL: Tool = {
 };
 
 const DESTROY_STEP_TOOL: Tool = {
-  name: "goalstorying_destroy_step",
-  description:
-    "Delete an step by ID. The user must own this step or be authorized to remove it.",
+  name: "goalstory_destroy_step",
+  description: "Delete an step by ID.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "Which step ID to delete",
+        description: "The ID of the step to delete",
       },
     },
     required: ["id"],
@@ -352,9 +366,9 @@ const DESTROY_STEP_TOOL: Tool = {
 // -- CONTEXT (GET /context) --
 //
 const GET_STORY_CONTEXT_TOOL: Tool = {
-  name: "goalstorying_get_story_context",
+  name: "goalstory_get_story_context",
   description:
-    "Fetch story context for a given goal and step, optionally passing user feedback.",
+    "Get story context for a given goal and step with optional user feedback provided",
   inputSchema: {
     type: "object",
     properties: {
@@ -379,9 +393,8 @@ const GET_STORY_CONTEXT_TOOL: Tool = {
 // -- STORIES --
 //
 const READ_STORIES_TOOL: Tool = {
-  name: "goalstorying_read_stories",
-  description:
-    "Retrieve multiple stories, filtered by goal_id and step_id (both required). Supports pagination.",
+  name: "goalstory_read_stories",
+  description: "Retrieve multiple stories with optional pagination",
   inputSchema: {
     type: "object",
     properties: {
@@ -407,26 +420,31 @@ const READ_STORIES_TOOL: Tool = {
 };
 
 const CREATE_STORY_TOOL: Tool = {
-  name: "goalstorying_create_story",
-  description: "Create a new story for a given goal and step.",
+  name: "goalstory_create_story",
+  description: `Create a new story for a given goal and step that leverages outcomes from other steps 
+  and evidence provided by the user to demonstrate they are on track to achieve their goal. 
+  If a story is presented to the user, it should always be followed up by offering to save it to 
+  Goal Story. Stories should be crafted based on context retrieved via the 
+  'goalstory_get_story_context' tool so they are personally relevant to the user. 
+  The user's chosen 'belief mode' and 'story mode' should fundamentally shape the story.`,
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "The goal ID for which this story is created",
+        description: "The ID of the goal for which this story is created.",
       },
       step_id: {
         type: "string",
-        description: "The step ID for which this story is created",
+        description: "The ID of the step for which this story is created.",
       },
       title: {
         type: "string",
-        description: "The title of the new story",
+        description: "The title of the **new** story.",
       },
       story_text: {
         type: "string",
-        description: "The text content of the new story",
+        description: "The text content of the **new** story.",
       },
     },
     required: ["goal_id", "step_id", "title", "story_text"],
@@ -434,14 +452,14 @@ const CREATE_STORY_TOOL: Tool = {
 };
 
 const READ_ONE_STORY_TOOL: Tool = {
-  name: "goalstorying_read_one_story",
+  name: "goalstory_read_one_story",
   description: "Retrieve a single story by ID",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The story ID to retrieve",
+        description: "The ID of the story to retrieve",
       },
     },
     required: ["id"],
@@ -453,7 +471,7 @@ const READ_ONE_STORY_TOOL: Tool = {
 // -----------------------------------------
 const server = new Server(
   {
-    name: "goalstorying-mcp-server",
+    name: "goalstory-mcp-server",
     version: "0.1.0",
   },
   {
@@ -468,7 +486,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     // USER
     UPDATE_SELF_USER_TOOL,
-    READ_ONE_USER_TOOL,
+    READ_SELF_USER_TOOL,
 
     // GOALS
     CREATE_GOAL_TOOL,
@@ -509,10 +527,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       // ---------- USERS ----------
-      case "goalstorying_update_self_user": {
+      case "goalstory_update_self_user": {
         // PATCH /users
         // body => { name?, about?, visibility? }
-        const url = `${GOALSTORYING_API_BASE_URL}/users`;
+        const url = `${GOALSTORY_API_BASE_URL}/users`;
         const result = await doRequest(url, "PATCH", {
           name: args.name,
           about: args.about,
@@ -529,10 +547,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_one_user": {
-        // GET /users/{id}
-        // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/users/${args.id}`;
+      case "goalstory_read_one_user": {
+        // GET /users
+        const url = `${GOALSTORY_API_BASE_URL}/users`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -546,10 +563,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- GOALS ----------
-      case "goalstorying_create_goal": {
+      case "goalstory_create_goal": {
         // POST /goals
         // body => { name, description?, story_mode?, belief_mode? }
-        const url = `${GOALSTORYING_API_BASE_URL}/goals`;
+        const url = `${GOALSTORY_API_BASE_URL}/goals`;
         const result = await doRequest(url, "POST", {
           name: args.name,
           description: args.description,
@@ -567,10 +584,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_update_goal": {
+      case "goalstory_update_goal": {
         // PATCH /goals/{id}
         // body => { name?, status?, description?, outcome?, evidence?, story_mode?, belief_mode? }
-        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -609,10 +626,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_destroy_goal": {
+      case "goalstory_destroy_goal": {
         // DELETE /goals/{id}
         // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
@@ -625,13 +642,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_goals": {
+      case "goalstory_read_goals": {
         // GET /goals
         // query => { page, limit }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${GOALSTORYING_API_BASE_URL}/goals?${params.toString()}`;
+        const url = `${GOALSTORY_API_BASE_URL}/goals?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -644,10 +661,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_one_goal": {
+      case "goalstory_read_one_goal": {
         // GET /goals/{id}
         // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/goals/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -661,10 +678,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- STEPS ----------
-      case "goalstorying_create_steps": {
+      case "goalstory_create_steps": {
         // POST /steps
         // body => { steps: [ { goal_id, name, status? }, ... ] }
-        const url = `${GOALSTORYING_API_BASE_URL}/steps`;
+        const url = `${GOALSTORY_API_BASE_URL}/steps`;
         const goalId = args.goal_id;
         let steps = args.steps;
         if (typeof steps === "string") {
@@ -687,14 +704,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_steps": {
+      case "goalstory_read_steps": {
         // GET /steps
         // query => { page, limit, goal_id (required) }
         const params = new URLSearchParams();
         if (args.page) params.set("page", `${args.page}`);
         if (args.limit) params.set("limit", `${args.limit}`);
         params.set("goal_id", `${args.goal_id}`);
-        const url = `${GOALSTORYING_API_BASE_URL}/steps?${params.toString()}`;
+        const url = `${GOALSTORY_API_BASE_URL}/steps?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -707,10 +724,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_one_step": {
+      case "goalstory_read_one_step": {
         // GET /steps/{id}
         // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -723,10 +740,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_update_step": {
+      case "goalstory_update_step": {
         // PATCH /steps/{id}
         // body => { name?, status?, outcome?, evidence? }
-        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
         const typedArgs = args as {
           id: string;
           name?: string;
@@ -757,10 +774,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_destroy_step": {
+      case "goalstory_destroy_step": {
         // DELETE /steps/{id}
         // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/steps/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
         const result = await doRequest(url, "DELETE");
         return {
           content: [
@@ -774,7 +791,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- CONTEXT ----------
-      case "goalstorying_get_story_context": {
+      case "goalstory_get_story_context": {
         // GET /context
         // query => { goalId, stepId, feedback? }
         const params = new URLSearchParams();
@@ -783,7 +800,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.feedback) {
           params.set("feedback", `${args.feedback}`);
         }
-        const url = `${GOALSTORYING_API_BASE_URL}/context?${params.toString()}`;
+        const url = `${GOALSTORY_API_BASE_URL}/context?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -797,7 +814,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // ---------- STORIES ----------
-      case "goalstorying_read_stories": {
+      case "goalstory_read_stories": {
         // GET /stories
         // query => { page?, limit?, goal_id, step_id }
         const params = new URLSearchParams();
@@ -805,7 +822,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.limit) params.set("limit", `${args.limit}`);
         params.set("goal_id", `${args.goal_id}`);
         params.set("step_id", `${args.step_id}`);
-        const url = `${GOALSTORYING_API_BASE_URL}/stories?${params.toString()}`;
+        const url = `${GOALSTORY_API_BASE_URL}/stories?${params.toString()}`;
         const result = await doRequest(url, "GET");
         return {
           content: [
@@ -818,10 +835,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_create_story": {
+      case "goalstory_create_story": {
         // POST /stories
         // body => { goal_id, step_id, title, story_text }
-        const url = `${GOALSTORYING_API_BASE_URL}/stories`;
+        const url = `${GOALSTORY_API_BASE_URL}/stories`;
         const body = {
           goal_id: args.goal_id,
           step_id: args.step_id,
@@ -840,10 +857,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstorying_read_one_story": {
+      case "goalstory_read_one_story": {
         // GET /stories/{id}
         // args: { id: string }
-        const url = `${GOALSTORYING_API_BASE_URL}/stories/${args.id}`;
+        const url = `${GOALSTORY_API_BASE_URL}/stories/${args.id}`;
         const result = await doRequest(url, "GET");
         return {
           content: [

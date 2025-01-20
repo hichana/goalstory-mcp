@@ -1,6 +1,6 @@
 {
-  "name": "goalstorying-mcp",
-  "version": "0.1.16",
+  "name": "goalstory-mcp",
+  "version": "0.1.17",
   "description": "MCP server for achieving your goals with visualization.",
   "main": "dist/index.js",
   "type": "module",
@@ -22,11 +22,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hichana/goalstorying-mcp"
+    "url": "git+https://github.com/hichana/goalstory-mcp"
   },
   "keywords": [
     "mcp",
-    "goalstorying",
+    "Goal Story",
     "claude",
     "ai",
     "visualization",
@@ -34,9 +34,9 @@
     "professional growth"
   ],
   "author": "@hichana",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/hichana/goalstorying-mcp/issues"
+    "url": "https://github.com/hichana/goalstory-mcp/issues"
   },
   "homepage": "https://goalstory.ing",
   "dependencies": {

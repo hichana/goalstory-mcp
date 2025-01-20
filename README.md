@@ -1,4 +1,4 @@
-# Goal Storying MCP Server
+# Goal Story MCP Server
 
 ## Get an API key
 
