@@ -93,7 +93,7 @@ const UPDATE_SELF_USER_TOOL: Tool = {
 };
 
 const READ_SELF_USER_TOOL: Tool = {
-  name: "goalstory_read_one_user",
+  name: "goalstory_read_self_user",
   description: "Get data for the current user.",
   inputSchema: {
     type: "object",
@@ -107,13 +107,9 @@ const READ_SELF_USER_TOOL: Tool = {
 const CREATE_GOAL_TOOL: Tool = {
   name: "goalstory_create_goal",
   description: `Create a Goal in Goal Story for the user that reflects their personal motivations and 
-  aspirations. If they have not already done so, the user is encouraced to provide as much personal 
-  detail about who they are and their intrinsic motivators as possible through the 
-  'goalstory_update_self_user' tool. Detailed information about the user can be retrieved via the 
-  'goalstory_read_one_uesr' tool. If a goal is presented to the user, it should always be followed 
-  up by offering to save the Goal to Goal Story. Goals should be well-detailed so that 
-  Goal Story can later generate a set of steps that will help the user achieve it.
-  `,
+  aspirations. Retrieve detailed information about the user via the 
+  'readOneUser' tool. Goals should be well-detailed so that 
+  Goal Story can later generate a set of steps that will help the user achieve it.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -249,8 +245,7 @@ const CREATE_STEPS_TOOL: Tool = {
   name: "goalstory_create_steps",
   description: `Create one or more **new** ordered steps for a given goal 
   (highest priority first and least priority last). Steps should outline the when, where, 
-  and how of actions needed to achieve a goal. If one or more steps are presented 
-  to the user, they should always be followed up by offering to save them to Goal Story.`,
+  and how of actions needed to achieve a goal.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -421,12 +416,10 @@ const READ_STORIES_TOOL: Tool = {
 
 const CREATE_STORY_TOOL: Tool = {
   name: "goalstory_create_story",
-  description: `Create a new story for a given goal and step that leverages outcomes from other steps 
-  and evidence provided by the user to demonstrate they are on track to achieve their goal. 
-  If a story is presented to the user, it should always be followed up by offering to save it to 
-  Goal Story. Stories should be crafted based on context retrieved via the 
-  'goalstory_get_story_context' tool so they are personally relevant to the user. 
-  The user's chosen 'belief mode' and 'story mode' should fundamentally shape the story.`,
+  description: `Create a new story for a given goal/step that leverages context from the 
+  'getStoryContext' tool so they are personally relevant to the user. 
+  The user's 'belief mode' and 'story mode' should fundamentally shape the story.
+  Evidence and outcomes from goal steps demonstrate the user is on track.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -547,7 +540,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "goalstory_read_one_user": {
+      case "goalstory_read_self_user": {
         // GET /users
         const url = `${GOALSTORY_API_BASE_URL}/users`;
         const result = await doRequest(url, "GET");
