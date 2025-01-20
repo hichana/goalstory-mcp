@@ -181,11 +181,11 @@ const UPDATE_GOAL_TOOL: Tool = {
           "An **update** with evidence related to the user achieving the goal.",
       },
       story_mode: {
-        type: "number",
+        type: "string",
         description: "The **updated** mode for the story format.",
       },
       belief_mode: {
-        type: "number",
+        type: "string",
         description: "The **updated** belief mode.",
       },
     },
