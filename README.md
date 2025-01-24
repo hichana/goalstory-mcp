@@ -19,6 +19,6 @@ The last two args are picked up in the MCP server and utilized like env vars. Th
 ```
 "goalStory": {
     "command": "npx",
-    "args": ["-y", "goalstory-mcp", "https://prod-orchestra8-xtqi.encr.app", "your-api-key"]
+    "args": ["-y", "goalstory-mcp", "https://prod-goalstory-rqc2.encr.app", "your-api-key"]
 }
 ```
