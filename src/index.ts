@@ -843,10 +843,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "goalstory_create_steps": {
         const args = rawArgs as unknown as GoalstoryCreateStepsInput;
         const url = `${GOALSTORY_API_BASE_URL}/steps`;
+
+        // when developing locally, we can pass in a list of strings in the MCP
+        // inspector like this: step1, step2
+        let steps = args.steps;
+        if (typeof steps === "string") {
+          const itemsAreAString = steps as string;
+          steps = itemsAreAString.split(",");
+        }
+
         const body = {
           goal_id: args.goal_id,
-          steps: args.steps,
+          steps,
         };
+
         const result = await doRequest(url, "POST", body);
         return {
           content: [
