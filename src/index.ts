@@ -258,7 +258,7 @@ const UPDATE_GOAL_TOOL: Tool = {
 const DESTROY_GOAL_TOOL: Tool = {
   name: "goalstory_destroy_goal",
   description:
-    "Delete an existing goal by ID (DELETE /goals/:id). This also cascades deletion of any related items on the server side.",
+    "Delete an existing goal by ID (DELETE /goals/:id). This also cascades deletion of any related steps on the server side.",
   inputSchema: {
     type: "object",
     properties: {
