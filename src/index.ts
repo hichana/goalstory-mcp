@@ -4,7 +4,9 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
@@ -39,9 +41,11 @@ import {
   GoalstoryReadCurrentFocusInput,
   GoalstoryGetStoryContextInput,
 } from "./types";
+import { promises as fs } from "fs";
+import path from "path";
 
 // -----------------------------------------
-// 1. Environment variables & basic setup
+// Environment variables & basic setup
 // -----------------------------------------
 const argv = process.argv.slice(2);
 const GOALSTORY_API_BASE_URL = argv[0];
@@ -86,7 +90,7 @@ async function doRequest<T = any>(
 }
 
 // -----------------------------------------
-// 2. Define Tools
+// Define Tools
 // -----------------------------------------
 
 /**
@@ -575,7 +579,7 @@ const READ_ONE_STORY_TOOL: Tool = {
 };
 
 // -----------------------------------------
-// 3. Instantiate the MCP server
+// MCP server
 // -----------------------------------------
 const server = new Server(
   {
@@ -585,12 +589,13 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
   }
 );
 
 // -----------------------------------------
-// 4. Tools listing handler
+// Tools list hanlder
 // -----------------------------------------
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -628,7 +633,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 // -----------------------------------------
-// 5. Main handler for tool calls
+// Tool calls handler
 // -----------------------------------------
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: rawArgs } = request.params;
@@ -1018,8 +1023,48 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+const ABOUT_GOALSTORY_RESOURCE_RELATIVE_PATH =
+  "src/resources/about-goalstory.md";
+const ABOUT_GOALSTORY_RESOURCE_URI = `file:///${ABOUT_GOALSTORY_RESOURCE_RELATIVE_PATH}`;
+const ABOUT_GOALSTORY_RESOURCE_MIMETYPE = "text/markdown";
+
+// List available resources
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return {
+    resources: [
+      {
+        uri: ABOUT_GOALSTORY_RESOURCE_URI,
+        name: "About Goal Story",
+        mimeType: ABOUT_GOALSTORY_RESOURCE_MIMETYPE,
+      },
+    ],
+  };
+});
+
+// Read resource contents
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const uri = request.params.uri;
+
+  if (uri === ABOUT_GOALSTORY_RESOURCE_URI) {
+    const aboutGoalStory = await readTextFileAsUtf8(
+      ABOUT_GOALSTORY_RESOURCE_RELATIVE_PATH
+    );
+    return {
+      contents: [
+        {
+          uri,
+          mimeType: ABOUT_GOALSTORY_RESOURCE_MIMETYPE,
+          text: aboutGoalStory,
+        },
+      ],
+    };
+  }
+
+  throw new Error("Resource not found");
+});
+
 // -----------------------------------------
-// 6. Run the server
+// Running the server
 // -----------------------------------------
 async function runServer() {
   const transport = new StdioServerTransport();
@@ -1031,3 +1076,34 @@ runServer().catch((error) => {
   console.error("Fatal error running server:", error);
   process.exit(1);
 });
+
+async function readTextFileAsUtf8(relativePath: string): Promise<string> {
+  // -----------------------------------------
+  // Should work with any of the following:
+  // .md (Markdown)
+  // .txt (Plain Text)
+  // .js (JavaScript)
+  // .ts (TypeScript)
+  // .py (Python)
+  // .html (HTML)
+  // .css (CSS)
+  // .json (JSON)
+  // .xml (XML)
+  // .yml, .yaml (YAML)
+  // .ini (INI)
+  // .env (Environment files)
+  // .csv (Comma-Separated Values)
+  // .tsv (Tab-Separated Values)
+  // .tex (LaTeX)
+  // -----------------------------------------
+
+  try {
+    const filePath = path.resolve(relativePath);
+    const fileContents = await fs.readFile(filePath, "utf-8");
+
+    return fileContents;
+  } catch (error) {
+    console.error("Error reading the markdown file:", error);
+    throw new Error("Could not read the about-goalstory file");
+  }
+}
