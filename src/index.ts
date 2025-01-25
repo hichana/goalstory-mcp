@@ -4,8 +4,11 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  Prompt,
   ReadResourceRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -588,6 +591,7 @@ const server = new Server(
     capabilities: {
       tools: {},
       resources: {},
+      prompts: {},
     },
   }
 );
@@ -1021,6 +1025,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+// -----------------------------------------
+// RESOURCES
+// -----------------------------------------
 const ABOUT_GOALSTORY_RESOURCE_URI = `file:///docs/about-goalstory.md`;
 const ABOUT_GOALSTORY_RESOURCE_MIMETYPE = "text/markdown";
 
@@ -1054,6 +1061,175 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   }
 
   throw new Error("Resource not found");
+});
+
+const CLARIFY = "clarify-goal";
+const FORMULATE = "formulate-steps";
+const DISCUSS = "discuss-goal";
+const ADD_NOTES = "add-notes";
+const UPDATE_NOTES = "update-notes";
+const TELL_STORY = "tell-story";
+
+// -----------------------------------------
+// PROMPTS
+// -----------------------------------------
+const PROMPTS: { [promptName: string]: Prompt } = {
+  [CLARIFY]: {
+    name: CLARIFY,
+    description: "Clarify the user's goal as their thought partner",
+    arguments: [
+      {
+        name: "goal",
+        description: "Goal you would like to achieve",
+        required: true,
+      },
+    ],
+  },
+  [FORMULATE]: {
+    name: FORMULATE,
+    description:
+      "Formulate actionable steps for the user to achieve their stated goal",
+  },
+  [DISCUSS]: {
+    name: DISCUSS,
+    description: "Discuss the user's current goal and step in detail",
+    arguments: [
+      {
+        name: "focus",
+        description: "Focus for discussion",
+        required: true,
+      },
+    ],
+  },
+  [ADD_NOTES]: {
+    name: ADD_NOTES,
+    description:
+      "Notes about the user's goal step that let them track their thoughts as they work on completing their goal step",
+    arguments: [
+      {
+        name: "notes",
+        description: "Notes to capture related to your current goal",
+        required: true,
+      },
+    ],
+  },
+  [UPDATE_NOTES]: {
+    name: UPDATE_NOTES,
+    description: "Updates to the user's goal step notes.",
+    arguments: [
+      {
+        name: "instructions",
+        description: "What to change about your goal notes",
+        required: true,
+      },
+    ],
+  },
+
+  [TELL_STORY]: {
+    name: TELL_STORY,
+    description: "A story for the user to visualize completing the goal step",
+  },
+};
+
+// List available prompts
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts: Object.values(PROMPTS),
+  };
+});
+
+// Get specific prompt
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const prompt = PROMPTS[request.params.name];
+  if (!prompt) {
+    throw new Error(`Prompt not found: ${request.params.name}`);
+  }
+
+  if (request.params.name === CLARIFY) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `I have a goal that I'd like to achieve:\n\n${request.params.arguments?.goal}\n\nHelp me clarify my goal so it's focused and achievable.`,
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === FORMULATE) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: "Help me formulate actionable steps that I can follow to achieve my goal.",
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === DISCUSS) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Let's chat through my goal, focusing on ${request.params.arguments?.focus}`,
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === ADD_NOTES) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Add the following notes to the current goal step: ${request.params.arguments?.notes}`,
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === UPDATE_NOTES) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `${request.params.arguments?.instructions}`,
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === TELL_STORY) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: "Tell me a story about me achieving this goal step.",
+          },
+        },
+      ],
+    };
+  }
+
+  throw new Error("Prompt implementation not found");
 });
 
 // -----------------------------------------
