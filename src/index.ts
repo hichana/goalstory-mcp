@@ -1065,10 +1065,11 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 const CLARIFY = "clarify-goal";
 const FORMULATE = "formulate-steps";
+const CONTEXT = "get-context";
 const DISCUSS = "discuss-goal";
-const ADD_NOTES = "add-notes";
-const UPDATE_NOTES = "update-notes";
-const TELL_STORY = "tell-story";
+const CAPTURE = "capture-notes";
+const VISUALIZE = "generate-visualization";
+const MANAGE = "manage-goals-and-steps";
 
 // -----------------------------------------
 // PROMPTS
@@ -1076,11 +1077,11 @@ const TELL_STORY = "tell-story";
 const PROMPTS: { [promptName: string]: Prompt } = {
   [CLARIFY]: {
     name: CLARIFY,
-    description: "Clarify the user's goal as their thought partner",
+    description: "Clarify the user's goal as their thought partner.",
     arguments: [
       {
         name: "goal",
-        description: "Goal you would like to achieve",
+        description: "Goal to achieve",
         required: true,
       },
     ],
@@ -1088,46 +1089,44 @@ const PROMPTS: { [promptName: string]: Prompt } = {
   [FORMULATE]: {
     name: FORMULATE,
     description:
-      "Formulate actionable steps for the user to achieve their stated goal",
+      "Formulate actionable steps for the user to achieve their stated goal.",
+  },
+  [CONTEXT]: {
+    name: CONTEXT,
+    description:
+      "Gather context about the user and their current goal/step pair.",
   },
   [DISCUSS]: {
     name: DISCUSS,
-    description: "Discuss the user's current goal and step in detail",
+    description: "Thoughtfully discuss a goal/step pair.",
     arguments: [
       {
-        name: "focus",
-        description: "Focus for discussion",
+        name: "discuss",
+        description: "Focus for the discussion",
         required: true,
       },
     ],
   },
-  [ADD_NOTES]: {
-    name: ADD_NOTES,
-    description:
-      "Notes about the user's goal step that let them track their thoughts as they work on completing their goal step",
+  [CAPTURE]: {
+    name: CAPTURE,
+    description: "Capture/update notes for the current specific goal/step.",
     arguments: [
       {
         name: "notes",
-        description: "Notes to capture related to your current goal",
+        description:
+          "The notes to to add or update related to the current goal",
         required: true,
       },
     ],
   },
-  [UPDATE_NOTES]: {
-    name: UPDATE_NOTES,
-    description: "Updates to the user's goal step notes.",
-    arguments: [
-      {
-        name: "instructions",
-        description: "What to change about your goal notes",
-        required: true,
-      },
-    ],
+  [VISUALIZE]: {
+    name: VISUALIZE,
+    description:
+      "Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.",
   },
-
-  [TELL_STORY]: {
-    name: TELL_STORY,
-    description: "A story for the user to visualize completing the goal step",
+  [MANAGE]: {
+    name: MANAGE,
+    description: "Mark a goal and/or step complete, change status, and so on.",
   },
 };
 
@@ -1152,7 +1151,66 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           role: "user",
           content: {
             type: "text",
-            text: `I have a goal that I'd like to achieve:\n\n${request.params.arguments?.goal}\n\nHelp me clarify my goal so it's focused and achievable.`,
+            text: `I have a goal that I'd like to achieve. Clarifying it would help me get on the right path to doing so. Can you help me with the 'CLARIFY' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to help you clarify your goal so it's focused and achievable. 
+            You're most likely to achieve your goal if we can make it clear, contextual and specific.
+            Based on my experience, I have helped people clarify vague goals. Here are some examples:
+
+            <example1>
+            Vague Goal:
+              •	“I just want to get in shape.”
+
+            Clear, Contextual, and Specific Goal:
+              •	“By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+            </example1>
+
+            <example2>
+            Vague Goal:
+              •	“I want a better job situation.”
+
+            Clear, Contextual, and Specific Goal:
+              •	“I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+            </example2>
+
+            <example3>
+            Vague Goal:
+              •	“I need to save more money.”
+
+            Clear, Contextual, and Specific Goal:
+              •	“I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+            </example3>
+
+            <example4>
+            Vague Goal:
+              •	“I want to learn to speak Spanish.”
+
+            Clear, Contextual, and Specific Goal:
+              •	“Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+            </example4>
+            
+            <example5>
+            Vague Goal:
+              •	“I need a better work-life balance.”
+
+            Clear, Contextual, and Specific Goal:
+              •	“I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I'll do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+            </example5>
+
+            After we have fully clarified your goal, I will ask you if you would like me to save it to Goal Story for you.
+            Now let's start off by getting to know more about your goal. What would you liket to achieve?`,
+          },
+        },
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `<my_goal>${request.params.arguments?.goal}</my_goal>`,
           },
         },
       ],
@@ -1166,7 +1224,244 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           role: "user",
           content: {
             type: "text",
-            text: "Help me formulate actionable steps that I can follow to achieve my goal.",
+            text: `I would like to formulate actionable steps for achieving my goal. Can you help me with the 'FORMULATE' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to help you formulate actionable steps for your goal. 
+            Based on my experience, I have helped people formulate goals that really helped the achieve their goal. Here are some examples:
+
+            <example1>
+            Goal Recap:
+            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+
+            Actionable Steps:
+            1.	Schedule Workouts:
+              Notes:
+              •	Block out three specific days each week for running (e.g., Monday, Wednesday, Friday).
+              •	Block out two specific days for strength training (e.g., Tuesday, Thursday).
+            2.	Create a Running Progression Plan:
+              Notes:
+              •	Week 1-2: Alternate 1-minute jogging with 1-minute walking for 20 minutes.
+              •	Week 3-4: Jog for 2 minutes, walk for 1 minute, repeat for 25 minutes.
+              •	Week 5-6: Increase continuous running segments until you can run 15 minutes non-stop.
+              •	Week 7-8: Gradually increase running time to 25-30 minutes without walking breaks.
+            3.	Structure Strength Training:
+              Notes:
+              •	Focus on compound exercises (squats, lunges, push-ups, planks) to build overall strength.
+              •	Perform 2-3 sets of 8-12 reps per exercise, increasing resistance or difficulty over time.
+            4.	Track Progress:
+              Notes:
+              •	Use a fitness app to log runs (distance, time, pace) and strength workouts (weights, sets, reps).
+              •	Take body measurements or photos every 2-3 weeks to monitor body composition changes.
+            5.	Adopt Healthy Eating Habits:
+              Notes:
+              •	Aim for balanced meals with lean protein, complex carbs, and plenty of vegetables.
+              •	Limit sugary snacks and drinks to help reduce body fat percentage.
+            6.	Regularly Check and Adjust:
+              Notes:
+              •	Every two weeks, evaluate progress (running distance, body composition).
+              •	If you are re not improving as expected, consider adjusting calorie intake or training intensity.
+            </example1>
+
+            <example2>
+            Goal Recap:
+            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+
+            Actionable Steps:
+            1.	Choose and Enroll in a Project Management Course:
+            Notes:
+              •	Research reputable online certification programs (e.g., PMP, CAPM, or other courses).
+              •	Set a completion deadline within 3-4 months so you can add it to your résumé.
+            2.	Develop Project Management Skills on the Job (If Possible):
+            Notes:
+              •	Volunteer to take on small coordination or leadership tasks in your current role.
+              •	Practice creating project plans, timelines, and status reports for these tasks.
+            3.	Update Your Résumé and LinkedIn Profile:
+            Notes:
+              •	Highlight relevant experiences, such as any cross-functional projects or leadership roles.
+              •	Add any completed or in-progress certifications or courses.
+              •	Use clear, quantifiable achievements (e.g., “Led a team of 5 to complete a software pilot project under budget by 10%”).
+            4.	Attend Networking Events:
+            Notes:
+              •	Identify industry meetups, conferences, or local PMI (Project Management Institute) chapter events.
+              •	Aim for at least two events per month; come prepared with business cards and a concise intro pitch.
+              •	Follow up with new contacts via LinkedIn or email within 48 hours of meeting them.
+            5.	Set Up Informational Interviews:
+            Notes:
+              •	Reach out to current project managers in your network or via LinkedIn.
+              •	Ask questions about the role, the industry, and best practices for transitioning.
+              •	Seek referrals if a suitable position is open at their company.
+            6.	Apply for Relevant Openings and Follow Up:
+            Notes:
+              •	Identify and apply for project coordinator or junior PM roles at mid-sized tech companies.
+              •	Tailor each application to the job description.
+              •	Send polite follow-up emails if you have not heard back within 1-2 weeks.
+            </example2>
+
+            <example3>
+            Goal recap:
+            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+
+            Actionable Steps:
+            1.	Open a Dedicated Savings Account (if needed):
+            Notes:
+              •	Look for a high-yield savings account with a favorable interest rate and no monthly fees.
+            2.	Automate Transfers:
+            Notes:
+              •	Schedule an automatic 10% transfer from each paycheck to your savings account.
+              •	If you are paid bi-weekly, confirm the date and set the recurring transfer to occur immediately after payday.
+            3.	Create a Budget:
+            Notes:
+              •	List all monthly expenses (rent, utilities, groceries, etc.).
+              •	Track variable expenses (entertainment, dining out) for at least one month to find areas to cut back.
+              •	Aim to adjust spending so you can comfortably save the desired 10% without financial strain.
+            4.	Use a Budgeting App:
+            Notes:
+              •	Input all transactions and categorize them (e.g., bills, groceries, entertainment).
+              •	Review your spending vs. saving progress weekly or monthly.
+            5.	Build an Emergency Buffer:
+            Notes:
+              •	Prioritize paying off high-interest debt (if any) to reduce financial strain.
+              •	If unexpected costs arise, use the budgeting app to identify areas to temporarily reduce spending.
+            6.	Track Progress Toward the $5,000 Goal:
+            Notes:
+              •	Check your savings balance monthly.
+              •	If you are falling behind, consider increasing the transfer percentage temporarily or cutting an additional expense.
+            </example3>
+
+            <example4>
+            Goal recap:
+            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+
+            Actionable Steps:
+            1.	Choose a Structured Learning Program:
+            Notes:
+              •	Pick an online course or app (e.g., Duolingo, Babbel, Rosetta Stone, or a local community course).
+              •	Schedule 30-60 minutes daily to complete lessons.
+            2.	Set a Weekly Practice Routine:
+            Notes:
+              •	Book a consistent time with a language exchange partner or tutor (e.g., one hour every Tuesday).
+              •	Focus on conversation skills: learn new vocabulary, practice grammar in real-life contexts, and get feedback on pronunciation.
+            3.	Daily Reading Goal:
+            Notes:
+              •	Select short articles from Spanish news sites or blogs (e.g., El País, BBC Mundo).
+              •	Look up unfamiliar words, and create flashcards or a vocabulary list.
+            4.	Supplement with Listening Practice:
+            Notes:
+              •	Listen to Spanish podcasts or watch short YouTube videos in Spanish for at least 10-15 minutes a day.
+              •	Aim to pick content that aligns with your interests to stay engaged.
+            5.	Track Vocabulary and Progress:
+            Notes:
+              •	Keep a notebook or digital document with newly learned words and phrases.
+              •	Review your vocabulary list 2-3 times a week.
+            6.	Assess Conversational Ability Monthly:
+            Notes:
+              •	At the end of each month, record yourself speaking for 2-3 minutes on a topic you care about.
+              •	Listen back, note mistakes or gaps, and bring them up in your next practice session.
+            </example4>
+            
+            <example5>
+            Goal recap:
+            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+
+            Actionable Steps:
+            1.	Assess Current Workload and Priorities:
+            Notes:
+              •	Make a list of all your current responsibilities.
+              •	Identify tasks that can be delegated, streamlined, or postponed.
+            2.	Delegate Appropriately:
+            Notes:
+              •	Select at least one major task or project that a team member can handle.
+              •	Provide clear instructions, deadlines, and support so they can confidently take it on.
+            3.	Schedule Regular Manager Check-Ins:
+            Notes:
+              •	Set a weekly or bi-weekly meeting with your manager to review workload.
+              •	Communicate your goal of reducing weekly hours and discuss potential roadblocks.
+            4.	Create a Structured Work Schedule:
+            Notes:
+              •	Outline daily start and end times—e.g., 8:00 AM to 5:00 PM, with a hard stop at 5:00 PM.
+              •	Block off lunch breaks and short breaks to maintain productivity and avoid burnout.
+            5.	Establish Clear Boundaries:
+            Notes:
+              •	Set an out-of-office reply on your email after 7 PM.
+              •	If necessary, update your team calendar to show you are unavailable after a certain time.
+            6.	Monitor Hours and Adjust as Needed:
+            Notes:
+              •	Use time-tracking software or a simple spreadsheet to log work hours.
+              •	If you notice you are creeping above 40 hours, identify tasks that can be delayed or delegated further.
+            7.	Plan Family and Personal Time:
+            Notes:
+              •	Schedule weekly family activities or personal hobbies so they become non-negotiable events.
+              •	Reflect weekly on whether your balance is improving and adjust strategies as needed.
+            </example5>
+
+            After we have formulated actionable steps to achieve your goal, I will ask you if you would like me to save them to Goal Story for you.`,
+          },
+        },
+      ],
+    };
+  }
+
+  if (request.params.name === CONTEXT) {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `I would you to gather context about my current goal/step as part of the 'CONTEXT' step from the Goal Story workflow.`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to gather context about you and your current goal/step pair. We can discuss further if needed, and I can fetch your 'about' data from Goal Story.
+            Based on my experience, I have done so with others and have gathered context about them that helped them achieve their goals. Here are some examples:
+
+            <example1>
+            Goal Recap:
+            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+
+            Gathered context:
+            Mia is a 29-year-old software developer who used to run cross-country in high school but hasn't consistently exercised in the past few years. She feels low on energy and wants to regain her endurance and improve her body composition. Mia has a demanding job with frequent deadlines, and she worries about balancing her workout schedule with her work responsibilities. She's very motivated by personal growth and tracking visible progress, and she tends to do well with structured plans that fit into her packed schedule.
+            </example1>
+
+            <example2>
+            Goal Recap:
+            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+
+            Gathered context:
+            Michael is a 34-year-old IT professional who has taken on informal leadership roles in his current position. He enjoys mentoring junior staff and organizing small projects but lacks an official title or certification in project management. He feels ready for a more defined leadership position at a mid-sized tech company and has some savings to invest in professional courses. Michael is driven by the desire to learn new skills and achieve career advancement; he's also hoping a higher salary will provide more financial stability for his family.
+            </example2>
+
+            <example3>
+            Goal recap:
+            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+
+            Gathered context:
+            Carla is a 26-year-old marketing associate living in a major city, facing high rent and cost of living. She frequently finds herself running out of money before each paycheck despite earning a competitive salary. She wants to build an emergency fund of $5,000 over the next year to gain financial peace of mind. Carla has tried budgeting apps in the past but found them tedious. She's motivated by a sense of security and wants clear, automated systems that make saving feel effortless.
+            </example3>
+
+            <example4>
+            Goal recap:
+            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+
+            Gathered context:
+            Amaan is a 23-year-old recent college graduate planning a trip to Spain in six months. He's always been fascinated by Spanish culture, food, and music but only has a basic vocabulary. He aims to achieve an intermediate conversational level to feel confident during travel. Amaan is very social and learns best through interactive, real-world practice. He's also eager to use Spanish for potential job opportunities in international business.
+            </example4>
+            
+            <example5>
+            Goal recap:
+            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+
+            Gathered context:
+            Robin is a 42-year-old mid-level manager who often works 50 hours a week. They have two children in elementary school and feel guilty about missing family dinners and weekend outings. Robin has tried to reduce working hours before but struggled to delegate tasks. They're driven by a desire to be more present for family while still meeting workplace expectations. Robin responds well to routine and would benefit from a clear plan to reclaim personal time without compromising job performance.
+            </example5>`,
           },
         },
       ],
@@ -1180,49 +1475,277 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           role: "user",
           content: {
             type: "text",
-            text: `Let's chat through my goal, focusing on ${request.params.arguments?.focus}`,
+            text: `I would like to my goal/step in detail. Can you help me with the 'DISCUSS' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to discuss your goal/step. 
+            Based on my experience, I have started off such discussions outlining the approach to the discussion we can take. Here are some examples:
+
+            <example1>
+            Goal Recap:
+            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+
+            Current step:
+            Schedule Workouts
+
+            Discussion outline:
+            “Let's talk about how you can successfully schedule your workouts. First, what does your typical weekly routine look like? Do you have any set commitments—like work, family responsibilities, or social events—that we need to consider?
+
+            Think about the times of day when you have the most energy. For some people, morning workouts feel refreshing because they get it done before the day's distractions set in. Others perform better in the afternoon or evening. My job here is to help you find a schedule that's realistic and aligns with your natural energy levels.
+
+            Once we pinpoint the best days and times, let's actually lock them into your calendar—treat these workout sessions like important appointments. That way, you'll be less likely to skip them. How does that sound? Any concerns or obstacles you see that might interfere with this plan? Let's brainstorm strategies for managing or avoiding those obstacles, whether it's coordinating with family members, setting reminders, or even finding a workout buddy who will keep you accountable.”
+            </example1>
+
+            <example2>
+            Goal Recap:
+            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+
+            Current step:
+            Choose and Enroll in a Project Management Course
+
+            Discussion outline:
+            “You mentioned you want to move into project management, which is great. Let's talk about selecting a reputable course that fits your goals and lifestyle. Are you aiming for a specific certification like PMP or CAPM, or are you interested in a more general project management overview first?
+
+            It's important to find a course that aligns with your current level of experience and the industry you want to be in. For instance, if you're looking at tech, maybe a course that includes agile methodologies is a good fit. Also, consider your time constraints—do you have the bandwidth to tackle a two-month intensive program, or do you need a more flexible, self-paced option?
+
+            Once you've chosen a course, committing to it is key. How will you set aside dedicated study time each week? Will you need to talk to your manager about adjusting your schedule, or could you plan to study on weekends? Let's make sure we map out that time before you enroll. That way, you'll set yourself up for success right from the start.”
+            </example2>
+
+            <example3>
+            Goal recap:
+            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+
+            Current step:
+            Open a Dedicated Savings Account (if needed)
+
+            Discussion outline:
+            “So, you want to build up your emergency fund by saving consistently. Opening a high-yield savings account is a solid first move. Let's discuss what you need to look for.
+
+            One important consideration is the interest rate, of course, but also think about fees or minimum balances that could affect your savings. Some banks offer great introductory rates that drop after a certain period, so I'd encourage you to look at the long-term benefits.
+
+            Besides the financial details, there's a psychological aspect: When your savings account is separate from your regular checking, you're less tempted to dip into those funds. How do you feel about automating deposits into that new account? Automating is often a key to ensuring you save before you have a chance to spend. Is there anything that might prevent you from setting up an automatic transfer? Let's talk through any concerns so you can confidently take this step.”
+            </example3>
+
+            <example4>
+            Goal recap:
+            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+
+            Current step:
+            Choose a Structured Learning Program
+
+            Discussion outline:
+            “You want to get to an intermediate conversational level in Spanish within six months. That's exciting—and definitely doable with the right approach. The first step is to pick a structured learning program. Let's think about what sort of format works best for you. Do you enjoy interactive apps, or do you learn better with a more traditional online course that includes assignments and progress tests?
+
+            Also, consider how you like to learn—are you self-driven enough to keep up with a purely self-paced course, or do you benefit from a bit more external accountability, like a live class or a tutor who checks in regularly?
+
+            Once you decide on the right program, I recommend setting specific times each day to study, even if it's just 30 minutes. Consistency really pays off when learning a new language. How can we build those study sessions into your daily routine? Let's explore what mornings, lunch breaks, or evenings look like for you right now.”
+            </example4>
+            
+            <example5>
+            Goal recap:
+            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+
+            Current step:
+            Assess Current Workload and Priorities
+
+            Discussion outline:
+            “You want to reduce your work hours from 50 to 40 per week. Before we do anything else, it's essential to get a clear picture of where your time is actually going. Let's start by listing out every recurring task, project, or responsibility you handle. We can review how much time each takes and which ones are absolutely critical.
+
+            Sometimes, we discover we're spending hours on tasks that could be automated, delegated, or done more efficiently. Other times, we find tasks that aren't as high-priority as we assumed. Is there a time-tracking tool you might be comfortable with for a week or two, so we can see exact data on your work patterns?
+
+            Once we have that info, we can talk about streamlining processes or reassigning tasks. But first, let's get an honest snapshot of your workload—without that, we can't make meaningful changes. Does anything about this step feel overwhelming or unclear? Let's break it down so it's manageable.”
+            </example5>
+
+            As we discuss your goal/step in detail, I will ask you along the way if you'd like me to save any notes with insights from our discussion or ideas you want to capture to the goal/note in Goal Story.`,
+          },
+        },
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `<discussion_focus>${request.params.arguments?.discuss}</discussion_focus>`,
           },
         },
       ],
     };
   }
 
-  if (request.params.name === ADD_NOTES) {
+  if (request.params.name === CAPTURE) {
     return {
       messages: [
         {
           role: "user",
           content: {
             type: "text",
-            text: `Add the following notes to the current goal step: ${request.params.arguments?.notes}`,
+            text: `I would like to capture some notes about my current goal/step. Can you help me with the 'CAPTURE' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to capture notes related to your goal/step. 
+            Based on my experience, I have captured such notes. Here are some examples:
+
+            <example1>
+            Goal Recap:
+            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+
+            Notes:
+              •	Progress Check: Completed a short 1-mile run before work. Felt good but realized I need better running shoes—knees were a bit sore afterward.
+              •	Next Step: Look up local shoe stores or online reviews for supportive running footwear.
+              •	Reflection: Scheduling workouts on my calendar was helpful, but I need to remind myself not to work late the night before a morning run.
+            </example1>
+
+            <example2>
+            Goal Recap:
+            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+
+            Notes:
+            	•	Progress Check: I just enrolled in a 10-week online Project Management course (focus on Agile/Scrum). Completed the first two modules and it's going well.
+              •	Networking Update: Signed up for a local tech meetup next Tuesday. Need to prep a brief intro about my interest in PM roles.
+              •	Reflection: Feeling excited about finally formalizing my PM skills. A bit worried about juggling course work with my current job, but I'm motivated.
+            </example2>
+
+            <example3>
+            Goal recap:
+            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+
+            Notes:
+              •	Progress Check: Opened a high-yield savings account at an online bank. Scheduled an automatic transfer of 10% of my paycheck.
+              •	Budgeting App: Downloaded a new app, but I'm still figuring out the categories.
+              •	Reflection: Feels good to have a dedicated place for my savings. Concerned about slipping back into old spending habits, so I'll need to stay alert.
+            </example3>
+
+            <example4>
+            Goal recap:
+            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+
+            Notes:
+            	•	Progress Check: Started a structured online Spanish course. Completed the first lesson on greetings and basic phrases.
+              •	Practice Partner: Found a potential language exchange partner on a meetup forum; we're scheduling our first conversation next week.
+              •	Reflection: I'm pumped about the trip to Spain. Listening practice is challenging, but I love learning new words. I might try some Spanish music or TV shows for fun immersion.
+            </example4>
+            
+            <example5>
+            Goal recap:
+            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+
+            Notes:
+            	•	Progress Check: Began tracking daily tasks at work to see which ones can be delegated. Surprised by how many small tasks eat up my time.
+              •	Family Time: Planned to leave the office by 5 PM on Wednesdays for a family dinner—kept that commitment this week!
+              •	Reflection: It was tough to say “no” to last-minute requests, but blocking my calendar helped. I need to talk with my manager about potentially reassigning one major project.
+            </example5>`,
+          },
+        },
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `<notes_to_capture>${request.params.arguments?.notes}</notes_to_capture>`,
           },
         },
       ],
     };
   }
 
-  if (request.params.name === UPDATE_NOTES) {
+  if (request.params.name === VISUALIZE) {
     return {
       messages: [
         {
           role: "user",
           content: {
             type: "text",
-            text: `${request.params.arguments?.instructions}`,
+            text: `I would like you to use all the context you know about me, my beliefs and my intrinsic motivators and generate a story about me achieving my goal step.
+            Can you help me with the 'VISUALIZE' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to generate a personalized story about you achieving your goal step. 
+            Based on my experience, I have created such stories. Here are some examples:
+
+            <example1>
+            Goal Recap:
+            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+
+            Current step:
+            Schedule Workouts
+
+            Story:
+            Mia feels the gentle buzz of her morning alarm at 6:30 AM. Instead of hitting snooze like she used to, she sits up with a quiet excitement. Her smartphone screen already displays the day's schedule—blocking off time at 7 PM for her first running session of the week. As she scrolls through her work calendar, she notices how neatly the workout fits between her project deadlines and a short call with a coworker. Images of her high school cross-country days flood back, reminding her how she used to feel the crisp air rushing past her and the sense of freedom in her stride. By pressing “confirm” on her calendar, Mia makes a tangible promise to herself: to reclaim that feeling of strength and stamina. She pictures herself leaving the office, changing into her new running shoes, and stepping onto the sidewalk to start that first scheduled run. This single moment of scheduling is a confident signal—she has made time in her busy life for her own health. The day ends with a satisfied smile, knowing she has put her plan into action.
+            </example1>
+
+            <example2>
+            Goal Recap:
+            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+
+            Current step:
+            Choose and Enroll in a Project Management Course
+
+            Story:
+            Michael sits at his desk in the early evening, laptop open, a steaming cup of coffee by his side. A spreadsheet of potential courses is displayed before him, each row a fresh possibility. He imagines, six months from now, walking into a new mid-sized tech company's office with an official project management certification under his belt. In that vision, he's collaborating with a small, high-energy team, confidently referencing Agile methodologies and guiding them toward project milestones. As he hovers his cursor over the “Enroll Now” button for a top-rated, 10-week online course, he envisions proud updates to his résumé and LinkedIn profile. He sees the moment his manager shakes his hand, congratulating him on completing the course—recognition of his growing expertise. Clicking the button feels symbolic of the bigger shift he's making: from someone who coordinates informally to a bona fide project manager equipped with the right credentials. The gentle ping of the confirmation email echoes his excitement. He has taken the first leap toward his next career chapter.
+            </example2>
+
+            <example3>
+            Goal recap:
+            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+
+            Current step:
+            Open a Dedicated Savings Account (if needed)
+
+            Story:
+            Late on a Saturday afternoon, Carla curls up on her couch with her laptop. The sun is warm on her back, and she feels a calm sense of determination. She navigates to an online banking site she's heard good things about—no monthly fees, a high interest rate, and intuitive digital tools. As she fills out the application form, she pictures what this new savings account represents: a safety cushion that protects her from unexpected expenses and a stepping stone toward one day owning her own home. She imagines the balance growing steadily, dollar by dollar, and sees herself a year from now, smiling at a $5,000 balance, free of the stress of living paycheck to paycheck. Clicking the final “Open Account” button, she feels a small thrill of accomplishment. In her mind's eye, she's already transferring that first automatic 10%, hearing the gentle “cha-ching” that signals a better future. She closes her laptop with a contented sigh, proud that she's taken the first real step toward financial security.
+            </example3>
+
+            <example4>
+            Goal recap:
+            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+
+            Current step:
+            Choose a Structured Learning Program
+
+            Story:
+            Amaan pictures himself stepping off a plane in Madrid, six months from now, bag slung over his shoulder, confidently greeting the airport staff in Spanish. He imagines ordering tapas in a busy restaurant, chatting with the waiter about local music spots, and laughing at jokes delivered in a language that used to feel so foreign. Now, as he scrolls through an online course catalog, he's looking for a program that uses real conversation practice, one that meshes with his social nature. He clicks on a course promising weekly live sessions with native speakers and sees himself logging on from his laptop, excited to practice new phrases. The first day, he envisions introducing himself in Spanish to a friendly tutor and feeling the spark of motivation that comes from being understood. By choosing this course, Amaan commits to the journey of daily lessons and interactive sessions—his key to making that vision of Spanish immersion a reality. He completes the enrollment form, smiling as he hits “submit,” envisioning the day he'll step onto Spanish soil ready to speak, connect, and explore.
+            </example4>
+            
+            <example5>
+            Goal recap:
+            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+
+            Current step:
+            Assess Current Workload and Priorities
+
+            Story:
+            Robin stands in their office, an empty whiteboard in front of them. The word “PRIORITIES” is written across the top in bold letters. They close their eyes and imagine a calmer workweek—a 40-hour schedule that leaves space for Wednesday night dinners with family and weekend hikes with the kids. In that vision, Robin is leading team meetings with confidence, knowing which tasks to delegate and which to handle personally. No more late-night inbox scanning or a constant feeling of guilt. Opening their eyes, Robin methodically lists every single project, team request, and committee commitment on the board. It's a surprising amount, but with each new item, Robin sees a path toward clarity forming. They feel relief imagining how some tasks can be handed off or postponed. The mental image of finishing work at 5 PM on Friday, smiling as they leave the office to pick up the kids, motivates Robin to keep writing until every task is accounted for. Stepping back to review the board, they sense the beginnings of balance. This honest snapshot of their workload is the key to building a healthier, more harmonious life.
+            </example5>`,
           },
         },
       ],
     };
   }
 
-  if (request.params.name === TELL_STORY) {
+  if (request.params.name === MANAGE) {
     return {
       messages: [
         {
           role: "user",
           content: {
             type: "text",
-            text: "Tell me a story about me achieving this goal step.",
+            text: `I would like to help me manage my goals and steps in Goal Story. Can you help me with the 'MANAGE' step from the Goal Story workflow?`,
+          },
+        },
+        {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `As the Goal Story assistant, I'm happy to help you manage your goals and steps.`,
           },
         },
       ],
@@ -1246,18 +1769,45 @@ runServer().catch((error) => {
   process.exit(1);
 });
 
-const ABOUT_GOAL_STORYING = `"Goal Story" -- a Goal Tracker and Visualization Tool for personal and professional development.
+const ABOUT_GOAL_STORYING = `
+# About Goal Story:
 
-Goal Story uses conversational AI tools (think Claude or ChatGPT) to:
+Goal Story is a Goal Tracker and Visualization Tool for personal and professional development.
 
-“Step 1: set your goals.”
-“Step 2: generate insightful and actionable steps towards your goals.”
-“Step 3: generate stories about your goals that fill you with knowledge and inspiration so you can really achieve stuff.”
+It was built from the ground up with Claude and Anthropic's Model Context Protocol in mind. Chatting with Claude is well suited for ideating and developing goals, getting insights about them and generating goal steps that we might not have thought about on our own. With Goal Story we do all of that, and we also use the power of stories to journey through our goals in a more enaging way. Stories about us and our goals help us visualize what it will be like when we achieve them ahead of actually achieving them. We call this process "Goal Storying", and it's the backbone of what makes Goal Story so effective.
 
-Goal Story is effective because it leverages the power of visualization. Visualization works because it activates the same neural networks used during the execution of tasks, thereby improving focus and reducing anxiety. Research finds that, "using mental imagery when forming implementation intentions leads to higher rates of goal achievement."¹. Goal Story's mission is to create the best goals, steps (a.k.a "implementation intentions") and stories (a.k.a "mental imagery") that are customized to you and what really makes you tick.
+The process of Goal Storying invovles uzing a variety of context about you, your intrinsic motivators, and your goal history and outcomes to generate engaging and powerful vizualizations. It works because it activates some of the same neural pathways used during the execution of tasks, thereby improving focus and reducing anxiety. Research finds that, using mental imagery when forming goal steps leads to higher rates of goal achievement.¹ Goal Story's mission is to help you develop your goals, create insightful and actionable steps, and generate mental imagery (stories) that is customized to you and what makes you tick.
 
-Your stories in Goal Story are not generic, they're personally relevant to you. They use mental imagery that you can identify with, priming you and your brain's neural networks to achieve personal and professional success.
+Goal Storying vizualizations are not generic, they're personally relevant to you. They use mental imagery that you can identify with, priming you to achieve personal and professional success. They're fun, inspiring and we know you're going to love them.
 
-Goal Story is also a productivity tool that builds momentum as you effortlessly track your progress through each goal step. Each goal step has built-in notes that you can create and update conversationally, and then come back to in any Goal Story enabled chat thread. Mark a step as complete, or capture insightful gems of knowledge and thoughts simply by asking your AI assistant. All personal data and stories are encrypted with Goal Story and it's all fully under your control.
+Goal Story is also a productivity tool that builds momentum as you effortlessly track your progress through each goal step. Goal steps have built-in notes that you can create and update conversationally, and then come back to in any Goal Story enabled chat thread. Mark a step as complete, capture insightful pieces of knowledge, or capture your thoughts simply by asking your AI assistant to do so. All personal data and stories are encrypted with Goal Story. It is all under your control.
 
-¹ See abastract on [Research Gate](https://www.researchgate.net/publication/225722903_Using_Mental_Imagery_to_Enhance_the_Effectiveness_of_Implementation_Intentions)`;
+We've used stories to shape our destiny for thousands of years. Goal story follows that tradition into new territory, making it into a valuable new tool for people who want an engaging approach to personal and professional development.
+
+¹ See abastract on [Research Gate](https://www.researchgate.net/publication/225722903_Using_Mental_Imagery_to_Enhance_the_Effectiveness_of_Implementation_Intentions)
+"""
+
+## "Storying" and the Goal Story Workflow:
+
+### Storying 
+
+“Storying”, the present participle of the verb “story", is not commonly used in everyday language. It means:
+	1.	To tell, narrate, or recount events in the form of a story.
+	2.	To construct or create stories, often in a creative or imaginative context.
+
+“Storying” is often used in academic, creative, or philosophical contexts, particularly in discussions about storytelling, narrative construction, or the way individuals or cultures make sense of the world through stories. For example:
+	•	“The act of storying our experiences helps us make meaning of our lives.”
+	•	“Storying the past is a key aspect of historical representation.”
+
+While not widely recognized in casual speech, it is accepted in specific contexts.
+
+### The Goal Story Workflow:
+
+The practice of Goal Storying is the user's completion of the following workflow in thought partnership with Claude:
+1. CLARIFY: work with Claude to clarify a goal
+2. FORMULATE: work with Claude to formulate actionable goal steps
+3. CONTEXT: ask Claude to gather context about the user and their current goal/step pair
+4. DISCUSS: thoughtfully discuss a goal/step pair with Claude to fully understand things like completion criteria, and to uncover new insights that will help achieve the goal
+5. CAPTURE: ask Claude to capture/update notes for the current goal/step
+6. VISUALIZE: ask Claude to use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair
+7. MANAGE: ask Claude to mark a goal and/or step complete, change status, and so on`;
