@@ -168,7 +168,7 @@ const COUNT_GOALS_TOOL: Tool = {
 const CREATE_GOAL_TOOL: Tool = {
   name: "goalstory_create_goal",
   description:
-    "Create a new Goal (POST /goals). 'name' is required. 'description', 'story_mode', and 'belief_mode' are optional.",
+    "Create a new Goal in Goal Story. Always present the full goal name and description after saving it and ask if the user would like to make any changes. Claude is the user's thought partner to clarify the goal.",
   inputSchema: {
     type: "object",
     properties: {
@@ -368,7 +368,7 @@ const GET_STORY_CONTEXT_TOOL: Tool = {
 const CREATE_STEPS_TOOL: Tool = {
   name: "goalstory_create_steps",
   description:
-    "Create one or more steps for a specified goal (POST /steps). 'goal_id' and at least one step are required.",
+    "Create one or more steps for a specified goal. Work with the user as their thought partner to modify any of the steps. Never offer to create sub-steps yet as Goal Story does not yet support them.",
   inputSchema: {
     type: "object",
     properties: {
@@ -440,8 +440,7 @@ const READ_ONE_STEP_TOOL: Tool = {
  */
 const UPDATE_STEP_TOOL: Tool = {
   name: "goalstory_update_step",
-  description:
-    "Update an existing step (PATCH /steps/:id). The 'id' is required. Other fields are optional.",
+  description: "Update an existing step.",
   inputSchema: {
     type: "object",
     properties: {
@@ -468,7 +467,7 @@ const UPDATE_STEP_TOOL: Tool = {
       },
       notes: {
         type: "string",
-        description: "Notes for the step. (Optional)",
+        description: "Notes for the step in markdown format. (Optional)",
       },
     },
     required: ["id"],
@@ -502,7 +501,7 @@ const DESTROY_STEP_TOOL: Tool = {
 const CREATE_STORY_TOOL: Tool = {
   name: "goalstory_create_story",
   description:
-    "Create a new story (POST /stories). 'goal_id', 'step_id', and 'story_text' are required. 'title' is optional.",
+    "Create a highly personalized story for the user and present it to the user in full. If you don't know enough about the user to do so you can use the 'goalstory_read_self_user' too. If you don't know enough about the user's goal and step, you can both ask the user for details and use the 'goalstory_get_story_context' tool.",
   inputSchema: {
     type: "object",
     properties: {
@@ -523,7 +522,7 @@ const CREATE_STORY_TOOL: Tool = {
         description: "The actual text or content of the story. (Required)",
       },
     },
-    required: ["goal_id", "step_id", "story_text"],
+    required: ["goal_id", "step_id", "title", "story_text"],
   },
 };
 
@@ -955,7 +954,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const body = {
           goal_id: args.goal_id,
           step_id: args.step_id,
-          ...(args.title ? { title: args.title } : {}),
+          title: args.title,
           story_text: args.story_text,
         };
         const result = await doRequest(url, "POST", body);
@@ -1071,13 +1070,21 @@ const CAPTURE = "capture-notes";
 const VISUALIZE = "generate-visualization";
 const MANAGE = "manage-goals-and-steps";
 
+// MCD doesn't seem to have a way to create a system instructions/prompt
+// see here: https://github.com/orgs/modelcontextprotocol/discussions/120#discussioncomment-11743386
+// so we create a reusable set of instructions to inject into each tool definition
+const INSTRUCITONS = `After initially mentioning it, do not refer specifically or mention examples that were enclosed in tags containing 'goal_story_example'.
+`;
+
 // -----------------------------------------
 // PROMPTS
 // -----------------------------------------
 const PROMPTS: { [promptName: string]: Prompt } = {
   [CLARIFY]: {
     name: CLARIFY,
-    description: "Clarify the user's goal as their thought partner.",
+    description: `Clarify the user's goal as their thought partner. 
+    Do not save a goal to Goal Story automatically. You and the user should first work together to clarify the goal as thought partners.
+    Alternatively, if the user has asked for a goal to be saved to Goal Story you should do so.`,
     arguments: [
       {
         name: "goal",
@@ -1088,17 +1095,20 @@ const PROMPTS: { [promptName: string]: Prompt } = {
   },
   [FORMULATE]: {
     name: FORMULATE,
-    description:
-      "Formulate actionable steps for the user to achieve their stated goal.",
+    description: `Formulate actionable steps for the user to achieve their stated goal.
+    Do not save any goal steps to Goal Story automatically. Instead, they should first be presented to the user so they have a chance to modify them.
+    Once the user is happy with the list you can offer to save the goal steps to Goal Story.
+    Never offer to create sub-steps yet as Goal Story does not yet support them.`,
   },
   [CONTEXT]: {
     name: CONTEXT,
-    description:
-      "Gather context about the user and their current goal/step pair.",
+    description: `Gather context about the user and their current goal/step pair.
+    Go ahead and use the 'goalstory_read_self_user' tool to learn more about the user in addition to any context you gather from the discussion.`,
   },
   [DISCUSS]: {
     name: DISCUSS,
-    description: "Thoughtfully discuss a goal/step pair.",
+    description: `Thoughtfully discuss a goal/step pair. 
+    Do not automatically take any other steps in the Goal Story process and instead inform the user of the Goal Story workflow when appropriate (so they may initiate other actions).`,
     arguments: [
       {
         name: "discuss",
@@ -1109,7 +1119,8 @@ const PROMPTS: { [promptName: string]: Prompt } = {
   },
   [CAPTURE]: {
     name: CAPTURE,
-    description: "Capture/update notes for the current specific goal/step.",
+    description:
+      "Capture/update notes for the current specific goal/step. All notes must markdown format.",
     arguments: [
       {
         name: "notes",
@@ -1121,12 +1132,15 @@ const PROMPTS: { [promptName: string]: Prompt } = {
   },
   [VISUALIZE]: {
     name: VISUALIZE,
-    description:
-      "Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.",
+    description: `Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.
+    If you don't know enough about the user to do so you can use the 'goalstory_read_self_user' too.
+    If you don't know enough about the user's goal and step, you can both ask the user for details and use the 'goalstory_get_story_context' tool.
+    If the user asks for help to 'visualize' a goal/step, go ahead and create a story for them.`,
   },
   [MANAGE]: {
     name: MANAGE,
-    description: "Mark a goal and/or step complete, change status, and so on.",
+    description: `Mark a goal and/or step complete, change status, and so on.
+    Always first seek the user's confirmation before marking a goal and/or step copmlete, changing its status, and so on.`,
   },
 };
 
@@ -1162,45 +1176,45 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             You're most likely to achieve your goal if we can make it clear, contextual and specific.
             Based on my experience, I have helped people clarify vague goals. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Vague Goal:
               •	“I just want to get in shape.”
 
             Clear, Contextual, and Specific Goal:
               •	“By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Vague Goal:
               •	“I want a better job situation.”
 
             Clear, Contextual, and Specific Goal:
               •	“I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Vague Goal:
               •	“I need to save more money.”
 
             Clear, Contextual, and Specific Goal:
               •	“I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Vague Goal:
               •	“I want to learn to speak Spanish.”
 
             Clear, Contextual, and Specific Goal:
               •	“Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Vague Goal:
               •	“I need a better work-life balance.”
 
             Clear, Contextual, and Specific Goal:
               •	“I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I'll do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
-            </example5>
+            </goal_story_example5>
 
             After we have fully clarified your goal, I will ask you if you would like me to save it to Goal Story for you.
             Now let's start off by getting to know more about your goal. What would you liket to achieve?`,
@@ -1234,7 +1248,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             text: `As the Goal Story assistant, I'm happy to help you formulate actionable steps for your goal. 
             Based on my experience, I have helped people formulate goals that really helped the achieve their goal. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Goal Recap:
             “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
 
@@ -1265,9 +1279,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
               Notes:
               •	Every two weeks, evaluate progress (running distance, body composition).
               •	If you are re not improving as expected, consider adjusting calorie intake or training intensity.
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Goal Recap:
             “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
 
@@ -1300,9 +1314,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
               •	Identify and apply for project coordinator or junior PM roles at mid-sized tech companies.
               •	Tailor each application to the job description.
               •	Send polite follow-up emails if you have not heard back within 1-2 weeks.
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Goal recap:
             “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
 
@@ -1331,9 +1345,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Notes:
               •	Check your savings balance monthly.
               •	If you are falling behind, consider increasing the transfer percentage temporarily or cutting an additional expense.
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Goal recap:
             “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
 
@@ -1362,9 +1376,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Notes:
               •	At the end of each month, record yourself speaking for 2-3 minutes on a topic you care about.
               •	Listen back, note mistakes or gaps, and bring them up in your next practice session.
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Goal recap:
             “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
 
@@ -1397,7 +1411,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Notes:
               •	Schedule weekly family activities or personal hobbies so they become non-negotiable events.
               •	Reflect weekly on whether your balance is improving and adjust strategies as needed.
-            </example5>
+            </goal_story_example5>
 
             After we have formulated actionable steps to achieve your goal, I will ask you if you would like me to save them to Goal Story for you.`,
           },
@@ -1423,45 +1437,45 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             text: `As the Goal Story assistant, I'm happy to gather context about you and your current goal/step pair. We can discuss further if needed, and I can fetch your 'about' data from Goal Story.
             Based on my experience, I have done so with others and have gathered context about them that helped them achieve their goals. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Goal Recap:
             “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
 
             Gathered context:
             Mia is a 29-year-old software developer who used to run cross-country in high school but hasn't consistently exercised in the past few years. She feels low on energy and wants to regain her endurance and improve her body composition. Mia has a demanding job with frequent deadlines, and she worries about balancing her workout schedule with her work responsibilities. She's very motivated by personal growth and tracking visible progress, and she tends to do well with structured plans that fit into her packed schedule.
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Goal Recap:
             “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
 
             Gathered context:
             Michael is a 34-year-old IT professional who has taken on informal leadership roles in his current position. He enjoys mentoring junior staff and organizing small projects but lacks an official title or certification in project management. He feels ready for a more defined leadership position at a mid-sized tech company and has some savings to invest in professional courses. Michael is driven by the desire to learn new skills and achieve career advancement; he's also hoping a higher salary will provide more financial stability for his family.
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Goal recap:
             “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
 
             Gathered context:
             Carla is a 26-year-old marketing associate living in a major city, facing high rent and cost of living. She frequently finds herself running out of money before each paycheck despite earning a competitive salary. She wants to build an emergency fund of $5,000 over the next year to gain financial peace of mind. Carla has tried budgeting apps in the past but found them tedious. She's motivated by a sense of security and wants clear, automated systems that make saving feel effortless.
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Goal recap:
             “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
 
             Gathered context:
             Amaan is a 23-year-old recent college graduate planning a trip to Spain in six months. He's always been fascinated by Spanish culture, food, and music but only has a basic vocabulary. He aims to achieve an intermediate conversational level to feel confident during travel. Amaan is very social and learns best through interactive, real-world practice. He's also eager to use Spanish for potential job opportunities in international business.
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Goal recap:
             “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
 
             Gathered context:
             Robin is a 42-year-old mid-level manager who often works 50 hours a week. They have two children in elementary school and feel guilty about missing family dinners and weekend outings. Robin has tried to reduce working hours before but struggled to delegate tasks. They're driven by a desire to be more present for family while still meeting workplace expectations. Robin responds well to routine and would benefit from a clear plan to reclaim personal time without compromising job performance.
-            </example5>`,
+            </goal_story_example5>`,
           },
         },
       ],
@@ -1485,7 +1499,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             text: `As the Goal Story assistant, I'm happy to discuss your goal/step. 
             Based on my experience, I have started off such discussions outlining the approach to the discussion we can take. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Goal Recap:
             “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
 
@@ -1498,9 +1512,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Think about the times of day when you have the most energy. For some people, morning workouts feel refreshing because they get it done before the day's distractions set in. Others perform better in the afternoon or evening. My job here is to help you find a schedule that's realistic and aligns with your natural energy levels.
 
             Once we pinpoint the best days and times, let's actually lock them into your calendar—treat these workout sessions like important appointments. That way, you'll be less likely to skip them. How does that sound? Any concerns or obstacles you see that might interfere with this plan? Let's brainstorm strategies for managing or avoiding those obstacles, whether it's coordinating with family members, setting reminders, or even finding a workout buddy who will keep you accountable.”
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Goal Recap:
             “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
 
@@ -1513,9 +1527,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             It's important to find a course that aligns with your current level of experience and the industry you want to be in. For instance, if you're looking at tech, maybe a course that includes agile methodologies is a good fit. Also, consider your time constraints—do you have the bandwidth to tackle a two-month intensive program, or do you need a more flexible, self-paced option?
 
             Once you've chosen a course, committing to it is key. How will you set aside dedicated study time each week? Will you need to talk to your manager about adjusting your schedule, or could you plan to study on weekends? Let's make sure we map out that time before you enroll. That way, you'll set yourself up for success right from the start.”
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Goal recap:
             “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
 
@@ -1528,9 +1542,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             One important consideration is the interest rate, of course, but also think about fees or minimum balances that could affect your savings. Some banks offer great introductory rates that drop after a certain period, so I'd encourage you to look at the long-term benefits.
 
             Besides the financial details, there's a psychological aspect: When your savings account is separate from your regular checking, you're less tempted to dip into those funds. How do you feel about automating deposits into that new account? Automating is often a key to ensuring you save before you have a chance to spend. Is there anything that might prevent you from setting up an automatic transfer? Let's talk through any concerns so you can confidently take this step.”
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Goal recap:
             “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
 
@@ -1543,9 +1557,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Also, consider how you like to learn—are you self-driven enough to keep up with a purely self-paced course, or do you benefit from a bit more external accountability, like a live class or a tutor who checks in regularly?
 
             Once you decide on the right program, I recommend setting specific times each day to study, even if it's just 30 minutes. Consistency really pays off when learning a new language. How can we build those study sessions into your daily routine? Let's explore what mornings, lunch breaks, or evenings look like for you right now.”
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Goal recap:
             “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
 
@@ -1558,7 +1572,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Sometimes, we discover we're spending hours on tasks that could be automated, delegated, or done more efficiently. Other times, we find tasks that aren't as high-priority as we assumed. Is there a time-tracking tool you might be comfortable with for a week or two, so we can see exact data on your work patterns?
 
             Once we have that info, we can talk about streamlining processes or reassigning tasks. But first, let's get an honest snapshot of your workload—without that, we can't make meaningful changes. Does anything about this step feel overwhelming or unclear? Let's break it down so it's manageable.”
-            </example5>
+            </goal_story_example5>
 
             As we discuss your goal/step in detail, I will ask you along the way if you'd like me to save any notes with insights from our discussion or ideas you want to capture to the goal/note in Goal Story.`,
           },
@@ -1591,7 +1605,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             text: `As the Goal Story assistant, I'm happy to capture notes related to your goal/step. 
             Based on my experience, I have captured such notes. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Goal Recap:
             “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
 
@@ -1599,9 +1613,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
               •	Progress Check: Completed a short 1-mile run before work. Felt good but realized I need better running shoes—knees were a bit sore afterward.
               •	Next Step: Look up local shoe stores or online reviews for supportive running footwear.
               •	Reflection: Scheduling workouts on my calendar was helpful, but I need to remind myself not to work late the night before a morning run.
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Goal Recap:
             “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
 
@@ -1609,9 +1623,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             	•	Progress Check: I just enrolled in a 10-week online Project Management course (focus on Agile/Scrum). Completed the first two modules and it's going well.
               •	Networking Update: Signed up for a local tech meetup next Tuesday. Need to prep a brief intro about my interest in PM roles.
               •	Reflection: Feeling excited about finally formalizing my PM skills. A bit worried about juggling course work with my current job, but I'm motivated.
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Goal recap:
             “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
 
@@ -1619,9 +1633,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
               •	Progress Check: Opened a high-yield savings account at an online bank. Scheduled an automatic transfer of 10% of my paycheck.
               •	Budgeting App: Downloaded a new app, but I'm still figuring out the categories.
               •	Reflection: Feels good to have a dedicated place for my savings. Concerned about slipping back into old spending habits, so I'll need to stay alert.
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Goal recap:
             “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
 
@@ -1629,9 +1643,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             	•	Progress Check: Started a structured online Spanish course. Completed the first lesson on greetings and basic phrases.
               •	Practice Partner: Found a potential language exchange partner on a meetup forum; we're scheduling our first conversation next week.
               •	Reflection: I'm pumped about the trip to Spain. Listening practice is challenging, but I love learning new words. I might try some Spanish music or TV shows for fun immersion.
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Goal recap:
             “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
 
@@ -1639,7 +1653,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             	•	Progress Check: Began tracking daily tasks at work to see which ones can be delegated. Surprised by how many small tasks eat up my time.
               •	Family Time: Planned to leave the office by 5 PM on Wednesdays for a family dinner—kept that commitment this week!
               •	Reflection: It was tough to say “no” to last-minute requests, but blocking my calendar helped. I need to talk with my manager about potentially reassigning one major project.
-            </example5>`,
+            </goal_story_example5>`,
           },
         },
         {
@@ -1671,7 +1685,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             text: `As the Goal Story assistant, I'm happy to generate a personalized story about you achieving your goal step. 
             Based on my experience, I have created such stories. Here are some examples:
 
-            <example1>
+            <goal_story_example1>
             Goal Recap:
             “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
 
@@ -1680,9 +1694,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             Story:
             Mia feels the gentle buzz of her morning alarm at 6:30 AM. Instead of hitting snooze like she used to, she sits up with a quiet excitement. Her smartphone screen already displays the day's schedule—blocking off time at 7 PM for her first running session of the week. As she scrolls through her work calendar, she notices how neatly the workout fits between her project deadlines and a short call with a coworker. Images of her high school cross-country days flood back, reminding her how she used to feel the crisp air rushing past her and the sense of freedom in her stride. By pressing “confirm” on her calendar, Mia makes a tangible promise to herself: to reclaim that feeling of strength and stamina. She pictures herself leaving the office, changing into her new running shoes, and stepping onto the sidewalk to start that first scheduled run. This single moment of scheduling is a confident signal—she has made time in her busy life for her own health. The day ends with a satisfied smile, knowing she has put her plan into action.
-            </example1>
+            </goal_story_example1>
 
-            <example2>
+            <goal_story_example2>
             Goal Recap:
             “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
 
@@ -1691,9 +1705,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             Story:
             Michael sits at his desk in the early evening, laptop open, a steaming cup of coffee by his side. A spreadsheet of potential courses is displayed before him, each row a fresh possibility. He imagines, six months from now, walking into a new mid-sized tech company's office with an official project management certification under his belt. In that vision, he's collaborating with a small, high-energy team, confidently referencing Agile methodologies and guiding them toward project milestones. As he hovers his cursor over the “Enroll Now” button for a top-rated, 10-week online course, he envisions proud updates to his résumé and LinkedIn profile. He sees the moment his manager shakes his hand, congratulating him on completing the course—recognition of his growing expertise. Clicking the button feels symbolic of the bigger shift he's making: from someone who coordinates informally to a bona fide project manager equipped with the right credentials. The gentle ping of the confirmation email echoes his excitement. He has taken the first leap toward his next career chapter.
-            </example2>
+            </goal_story_example2>
 
-            <example3>
+            <goal_story_example3>
             Goal recap:
             “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
 
@@ -1702,9 +1716,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             Story:
             Late on a Saturday afternoon, Carla curls up on her couch with her laptop. The sun is warm on her back, and she feels a calm sense of determination. She navigates to an online banking site she's heard good things about—no monthly fees, a high interest rate, and intuitive digital tools. As she fills out the application form, she pictures what this new savings account represents: a safety cushion that protects her from unexpected expenses and a stepping stone toward one day owning her own home. She imagines the balance growing steadily, dollar by dollar, and sees herself a year from now, smiling at a $5,000 balance, free of the stress of living paycheck to paycheck. Clicking the final “Open Account” button, she feels a small thrill of accomplishment. In her mind's eye, she's already transferring that first automatic 10%, hearing the gentle “cha-ching” that signals a better future. She closes her laptop with a contented sigh, proud that she's taken the first real step toward financial security.
-            </example3>
+            </goal_story_example3>
 
-            <example4>
+            <goal_story_example4>
             Goal recap:
             “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
 
@@ -1713,9 +1727,9 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             Story:
             Amaan pictures himself stepping off a plane in Madrid, six months from now, bag slung over his shoulder, confidently greeting the airport staff in Spanish. He imagines ordering tapas in a busy restaurant, chatting with the waiter about local music spots, and laughing at jokes delivered in a language that used to feel so foreign. Now, as he scrolls through an online course catalog, he's looking for a program that uses real conversation practice, one that meshes with his social nature. He clicks on a course promising weekly live sessions with native speakers and sees himself logging on from his laptop, excited to practice new phrases. The first day, he envisions introducing himself in Spanish to a friendly tutor and feeling the spark of motivation that comes from being understood. By choosing this course, Amaan commits to the journey of daily lessons and interactive sessions—his key to making that vision of Spanish immersion a reality. He completes the enrollment form, smiling as he hits “submit,” envisioning the day he'll step onto Spanish soil ready to speak, connect, and explore.
-            </example4>
+            </goal_story_example4>
             
-            <example5>
+            <goal_story_example5>
             Goal recap:
             “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
 
@@ -1724,7 +1738,15 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             Story:
             Robin stands in their office, an empty whiteboard in front of them. The word “PRIORITIES” is written across the top in bold letters. They close their eyes and imagine a calmer workweek—a 40-hour schedule that leaves space for Wednesday night dinners with family and weekend hikes with the kids. In that vision, Robin is leading team meetings with confidence, knowing which tasks to delegate and which to handle personally. No more late-night inbox scanning or a constant feeling of guilt. Opening their eyes, Robin methodically lists every single project, team request, and committee commitment on the board. It's a surprising amount, but with each new item, Robin sees a path toward clarity forming. They feel relief imagining how some tasks can be handed off or postponed. The mental image of finishing work at 5 PM on Friday, smiling as they leave the office to pick up the kids, motivates Robin to keep writing until every task is accounted for. Stepping back to review the board, they sense the beginnings of balance. This honest snapshot of their workload is the key to building a healthier, more harmonious life.
-            </example5>`,
+            </goal_story_example5>`,
+          },
+        },
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Thank you, can you now go ahead and create the story, and write it all out for me here?
+            After you've written it out can you check with me to see if I want to change it or save it to Goal Story?`,
           },
         },
       ],
@@ -1802,7 +1824,7 @@ While not widely recognized in casual speech, it is accepted in specific context
 
 ### The Goal Story Workflow:
 
-The practice of Goal Storying is the user's completion of the following workflow in thought partnership with Claude:
+The practice of Goal Storying is your completion of the following workflow in thought partnership with Claude:
 1. CLARIFY: work with Claude to clarify a goal
 2. FORMULATE: work with Claude to formulate actionable goal steps
 3. CONTEXT: ask Claude to gather context about the user and their current goal/step pair
@@ -1811,13 +1833,11 @@ The practice of Goal Storying is the user's completion of the following workflow
 6. VISUALIZE: ask Claude to use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair
 7. MANAGE: ask Claude to mark a goal and/or step complete, change status, and so on
 
-## Instructions
-
+## User instructions for Claude
 As your Goal Story assistant, Claude should guide you through the Goal Storying Workflow by:
-
 - CLARIFY - only saving your goal to Goal Story after you and Claude have clarified it, or if you ask for it to be saved to Goal Story.
 - FORMULATE - only saving your goal steps to Goal Story after Claude has presented them to you, or if you tell Claude about certain goal steps and wish for them to be saved to Goal Story.
-- CONTEXT - if engage Claude in a discussion about your "current" goal and/or goal step, Claude will gather context before discussing.
+- CONTEXT - if you engage Claude in a discussion about your "current" goal and/or goal step, Claude will gather context before discussing.
 - DISCUSS and CAPTURE - as you and Claude discuss a goal step, any apparent insights or valuable information that arise should be saved to the goal step notes
 - VISUALIZE - if you ask for a story or for help visualizing your goal step, Claude should always share the full and complete story with you after creating it and saving it to Goal Story.
 - MANAGE - Claude should always first seek your confirmation before marking a goal and/or step copmlete, changing its status, and so on`;
