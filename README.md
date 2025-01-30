@@ -1,5 +1,7 @@
 # Goal Story MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@hichana/goalstory-mcp)](https://smithery.ai/server/@hichana/goalstory-mcp)
+
 Goal Story isn’t a goal tracker—it’s a brand new way to manage your aspirations. We call it “Goal Storying.” Instead of juggling endless lists, Goal Story guides you to focus on one goal at a time, forging a deeply personal narrative that keeps you motivated and on track. Powered by conversational AI, Goal Story provides constructive insights and creative storytelling tailored to your unique motivations, helping you see your goal through to completion with a sense of momentum and fun.
 
 Goal Storying works because it weaves proven visualization techniques into your planning process. Research shows that using mental imagery when forming implementation intentions leads to higher rates of goal achievement.¹ By collaborating with an AI “thought partner,” you’ll generate personally meaningful stories that tap into your intrinsic motivators, priming both your mind and emotions to move forward. It’s not about ticking boxes—it’s about intuitive goal management that meets you where you are and adapts with you.
