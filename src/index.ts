@@ -12,7 +12,7 @@ import {
   ReadResourceRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 import {
   // ---------- Users ----------
@@ -78,15 +78,20 @@ async function doRequest<T = any>(
       data: body,
     });
     return response.data as T;
-  } catch (error: any) {
-    const errorText = error.response?.data || error.message;
-    throw new Error(
-      `HTTP Error ${
-        error.response?.status || "Unknown"
-      }. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
-        body
-      )}. Error text: ${JSON.stringify(errorText)}`
-    );
+  } catch (err) {
+    if ((err as AxiosError).response?.data) {
+      const error = err as AxiosError;
+      throw new Error(
+        `HTTP Error ${
+          error.response?.status || "Unknown"
+        }. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
+          body
+        )}. Error text: ${JSON.stringify(error.response?.data)}`
+      );
+    } else {
+      const error = err as Error;
+      throw new Error(error.message);
+    }
   }
 }
 
