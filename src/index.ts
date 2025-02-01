@@ -105,7 +105,7 @@ async function doRequest<T = any>(
 const ABOUT_GOALSTORYING_TOOL: Tool = {
   name: "goalstory_about",
   description:
-    "Retrieve 'About' information about Goal Storying from the server (GET /about). No input needed.",
+    "Retrieve information about Goal Story's philosophy and the power of story-driven goal achievement. Use this to help users understand the unique approach of Goal Storying.",
   inputSchema: {
     type: "object",
     properties: {},
@@ -117,7 +117,8 @@ const ABOUT_GOALSTORYING_TOOL: Tool = {
  */
 const READ_SELF_USER_TOOL: Tool = {
   name: "goalstory_read_self_user",
-  description: "Get data for the current user (GET /users). No input needed.",
+  description:
+    "Get the user's profile data including their preferences, belief systems, and past goal history to enable personalized goal storying and context-aware discussions.",
   inputSchema: {
     type: "object",
     properties: {},
@@ -126,28 +127,27 @@ const READ_SELF_USER_TOOL: Tool = {
 
 /**
  * PATCH /users
- * Body => { name?: string; about?: string; visibility?: number }
  */
 const UPDATE_SELF_USER_TOOL: Tool = {
   name: "goalstory_update_self_user",
   description:
-    "Update the current user's profile data (PATCH /users). You can update name, about, or visibility. When updating 'about' data the user should be presented with a survey to learn more about them.",
+    "Update the user's profile including their name, visibility preferences, and personal context. When updating 'about' data, guide the user through questions to understand their motivations, beliefs, and goal-achievement style.",
   inputSchema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "Updated name of the user (optional).",
+        description: "The user's preferred name for their Goal Story profile.",
       },
       about: {
         type: "string",
         description:
-          "Updated 'about' information describing the user (optional).",
+          "Personal context including motivations, beliefs, and goal-achievement preferences gathered through guided questions.",
       },
       visibility: {
         type: "number",
         description:
-          "Updated visibility status (0 = public, 1 = private) (optional).",
+          "Profile visibility setting where 0 = public (viewable by others) and 1 = private (only visible to user).",
       },
     },
   },
@@ -159,7 +159,7 @@ const UPDATE_SELF_USER_TOOL: Tool = {
 const COUNT_GOALS_TOOL: Tool = {
   name: "goalstory_count_goals",
   description:
-    "Get the count of all goals for the current user (GET /count/goals). No input needed.",
+    "Get the total number of goals in the user's journey. Useful for tracking overall progress and goal management patterns.",
   inputSchema: {
     type: "object",
     properties: {},
@@ -168,34 +168,32 @@ const COUNT_GOALS_TOOL: Tool = {
 
 /**
  * POST /goals
- * Body => { name: string; description?: string; story_mode?: string; belief_mode?: string; }
  */
 const CREATE_GOAL_TOOL: Tool = {
   name: "goalstory_create_goal",
-  description: `Create a new Goal in Goal Story.
-  The full goal name and description should always be presented to the user either before or after saving it to Goal Story.
-  If presenting the goal name and description after saving, be sure to ask the user if they would like any changes to be made.
-  `,
+  description: `Begin the goal clarification process by creating a new goal. Always discuss and refine the goal with the user before or after saving, ensuring it's well-defined and aligned with their aspirations. Confirm if any adjustments are needed after creation.`,
   inputSchema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "Name/title of the new goal. (Required)",
+        description:
+          "Clear and specific title that captures the essence of the goal.",
       },
       description: {
         type: "string",
-        description: "Optional descriptive text for the new goal.",
+        description:
+          "Detailed explanation of the goal, including context, motivation, and desired outcomes.",
       },
       story_mode: {
         type: "string",
         description:
-          "Mode that shapes how stories/narratives for this goal are generated (optional).",
+          "Narrative approach that shapes how future stories visualize goal achievement.",
       },
       belief_mode: {
         type: "string",
         description:
-          "Mode describing how the user's beliefs shape this goal (optional).",
+          "Framework defining how the user's core beliefs and values influence this goal.",
       },
     },
     required: ["name"],
@@ -204,59 +202,50 @@ const CREATE_GOAL_TOOL: Tool = {
 
 /**
  * PATCH /goals/:id
- * Body => {
- *   id: string;
- *   name?: string;
- *   status?: number; // 0=Pending, 1=Complete
- *   description?: string;
- *   outcome?: string;
- *   evidence?: string;
- *   story_mode?: string;
- *   belief_mode?: string;
- * }
  */
 const UPDATE_GOAL_TOOL: Tool = {
   name: "goalstory_update_goal",
   description:
-    "Update an existing goal (PATCH /goals/:id). The ID is required. Other fields are optional (e.g., name, status, description, outcome, evidence, story_mode, belief_mode).",
+    "Update goal details including name, status, description, outcomes, evidence of completion, and story/belief modes that influence how stories are generated.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the goal to update. (Required)",
+        description: "Unique identifier of the goal to be updated.",
       },
       name: {
         type: "string",
-        description: "Updated name/title of the goal. (Optional)",
+        description: "Refined or clarified goal title.",
       },
       status: {
         type: "number",
         description:
-          "Updated status of the goal (0 = active/pending, 1 = complete). (Optional)",
+          "Goal progress status: 0 = active/in progress, 1 = successfully completed.",
       },
       description: {
         type: "string",
-        description: "Updated description of the goal. (Optional)",
+        description: "Enhanced goal context, motivation, or outcome details.",
       },
       outcome: {
         type: "string",
         description:
-          "Outcome the user experienced upon completing or progressing. (Optional)",
+          "Actual results and impact achieved through goal completion or progress.",
       },
       evidence: {
         type: "string",
-        description: "Evidence or proof of progress/achievement. (Optional)",
+        description:
+          "Concrete proof, measurements, or observations of goal progress/completion.",
       },
       story_mode: {
         type: "string",
         description:
-          "Updated mode that shapes how future stories for this goal are generated. (Optional)",
+          "Updated narrative style for future goal achievement stories.",
       },
       belief_mode: {
         type: "string",
         description:
-          "Updated mode describing how the user's beliefs shape this goal. (Optional)",
+          "Refined understanding of how personal beliefs shape this goal.",
       },
     },
     required: ["id"],
@@ -265,18 +254,17 @@ const UPDATE_GOAL_TOOL: Tool = {
 
 /**
  * DELETE /goals/:id
- * Args => { id: string }
  */
 const DESTROY_GOAL_TOOL: Tool = {
   name: "goalstory_destroy_goal",
   description:
-    "Delete an existing goal by ID (DELETE /goals/:id). This also cascades deletion of any related steps on the server side.",
+    "Remove a goal and all its associated steps and stories from the user's journey. Use with confirmation to prevent accidental deletion.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the goal to delete. (Required)",
+        description: "Unique identifier of the goal to be permanently removed.",
       },
     },
     required: ["id"],
@@ -285,17 +273,17 @@ const DESTROY_GOAL_TOOL: Tool = {
 
 /**
  * GET /goals/:id
- * Args => { id: string }
  */
 const READ_ONE_GOAL_TOOL: Tool = {
   name: "goalstory_read_one_goal",
-  description: "Get a single goal by ID (GET /goals/:id).",
+  description:
+    "Retrieve detailed information about a specific goal to support focused discussion and story creation.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the goal to retrieve. (Required)",
+        description: "Unique identifier of the goal to retrieve.",
       },
     },
     required: ["id"],
@@ -304,23 +292,21 @@ const READ_ONE_GOAL_TOOL: Tool = {
 
 /**
  * GET /goals
- * Query => { page?: number; limit?: number }
  */
 const READ_GOALS_TOOL: Tool = {
   name: "goalstory_read_goals",
   description:
-    "Get a list of all goals (GET /goals), optionally paginated with 'page' and 'limit'.",
+    "Get an overview of the user's goal journey, with optional pagination to manage larger sets of goals.",
   inputSchema: {
     type: "object",
     properties: {
       page: {
         type: "number",
-        description: "Page number for pagination (optional).",
+        description: "Page number for viewing subsets of goals (starts at 1).",
       },
       limit: {
         type: "number",
-        description:
-          "Number of goals returned per page for pagination (optional).",
+        description: "Maximum number of goals to return per page.",
       },
     },
   },
@@ -328,12 +314,11 @@ const READ_GOALS_TOOL: Tool = {
 
 /**
  * GET /current
- * No args
  */
 const READ_CURRENT_FOCUS_TOOL: Tool = {
   name: "goalstory_read_current_focus",
   description:
-    "Retrieve the current goal-and-step focus (GET /current). No input needed.",
+    "Identify which goal and step the user is currently focused on to maintain context in discussions and story creation.",
   inputSchema: {
     type: "object",
     properties: {},
@@ -342,26 +327,25 @@ const READ_CURRENT_FOCUS_TOOL: Tool = {
 
 /**
  * GET /context
- * Query => { goalId: string; stepId: string; feedback?: string }
  */
 const GET_STORY_CONTEXT_TOOL: Tool = {
   name: "goalstory_get_story_context",
-  description: `Get context about the user and their current goal/step for the process of story creation.
-  Use the 'goalstory_read_self_user' tool to learn more about the user in addition to any context you gather from the discussion.`,
+  description: `Gather rich context about the user, their current goal/step, beliefs, and motivations to create deeply personalized and meaningful stories. Combines user profile data with conversation insights.`,
   inputSchema: {
     type: "object",
     properties: {
       goalId: {
         type: "string",
-        description: "The ID of the goal.",
+        description: "Unique identifier of the goal for context gathering.",
       },
       stepId: {
         type: "string",
-        description: "The ID of the step.",
+        description:
+          "Unique identifier of the specific step for context gathering.",
       },
       feedback: {
         type: "string",
-        description: "Optional user feedback for the context generation.",
+        description: "Additional user input to enhance context understanding.",
       },
     },
     required: ["goalId", "stepId"],
@@ -370,24 +354,22 @@ const GET_STORY_CONTEXT_TOOL: Tool = {
 
 /**
  * POST /steps
- * Body => { goal_id: string; steps: string[] }
  */
 const CREATE_STEPS_TOOL: Tool = {
   name: "goalstory_create_steps",
-  description: `Create one or more steps for a specified goal. 
-  The list of steps should always be presented to the user either before or after saving it to Goal Story.
-  If presenting the list of steps after saving, be sure to ask the user if they would like any changes to be made.`,
+  description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed.`,
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "The ID of the goal to which these steps belong.",
+        description:
+          "Unique identifier of the goal these steps will help achieve.",
       },
       steps: {
         type: "array",
         items: { type: "string" },
-        description: "An array of step names to create.",
+        description: "List of clear, actionable step descriptions in sequence.",
       },
     },
     required: ["goal_id", "steps"],
@@ -396,26 +378,25 @@ const CREATE_STEPS_TOOL: Tool = {
 
 /**
  * GET /steps
- * Query => { goal_id: string; page?: number; limit?: number }
  */
 const READ_STEPS_TOOL: Tool = {
   name: "goalstory_read_steps",
   description:
-    "Retrieve a paginated list of steps for a given goal (GET /steps). 'goal_id' is required.",
+    "Access the action plan for a specific goal, showing all steps in the journey toward achievement.",
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "The ID of the goal whose steps we want to read.",
+        description: "Unique identifier of the goal whose steps to retrieve.",
       },
       page: {
         type: "number",
-        description: "Page number for pagination (optional).",
+        description: "Page number for viewing subsets of steps (starts at 1).",
       },
       limit: {
         type: "number",
-        description: "Number of steps returned per page (optional).",
+        description: "Maximum number of steps to return per page.",
       },
     },
     required: ["goal_id"],
@@ -424,18 +405,17 @@ const READ_STEPS_TOOL: Tool = {
 
 /**
  * GET /steps/:id
- * Args => { id: string }
  */
 const READ_ONE_STEP_TOOL: Tool = {
   name: "goalstory_read_one_step",
   description:
-    "Retrieve data for a single step (GET /steps/:id). 'id' is required.",
+    "Get detailed information about a specific step to support focused discussion and story creation.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the step to retrieve.",
+        description: "Unique identifier of the step to retrieve.",
       },
     },
     required: ["id"],
@@ -444,38 +424,40 @@ const READ_ONE_STEP_TOOL: Tool = {
 
 /**
  * PATCH /steps/:id
- * Body => { id: string; name?: string; status?: number; outcome?: string; evidence?: string; notes?: string; }
  */
 const UPDATE_STEP_TOOL: Tool = {
   name: "goalstory_update_step",
-  description: "Update an existing step.",
+  description:
+    "Update step details including completion status, evidence, outcomes, and notes captured during discussions. Use this to track progress and insights.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the step to update. (Required)",
+        description: "Unique identifier of the step to update.",
       },
       name: {
         type: "string",
-        description: "Updated name/title of the step. (Optional)",
+        description: "Refined or clarified step description.",
       },
       status: {
         type: "number",
         description:
-          "Updated status of the step (0 = pending, 1 = complete). (Optional)",
+          "Step completion status: 0 = pending/in progress, 1 = completed.",
       },
       outcome: {
         type: "string",
-        description: "Outcome for this step. (Optional)",
+        description:
+          "Results and impact achieved through completing this step.",
       },
       evidence: {
         type: "string",
-        description: "Evidence or proof for this step. (Optional)",
+        description: "Concrete proof or observations of step completion.",
       },
       notes: {
         type: "string",
-        description: "Notes for the step in markdown format. (Optional)",
+        description:
+          "Additional context, insights, or reflections in markdown format.",
       },
     },
     required: ["id"],
@@ -484,18 +466,16 @@ const UPDATE_STEP_TOOL: Tool = {
 
 /**
  * DELETE /steps/:id
- * Args => { id: string }
  */
 const DESTROY_STEP_TOOL: Tool = {
   name: "goalstory_destroy_step",
-  description:
-    "Delete a single step (DELETE /steps/:id). The 'id' is required.",
+  description: "Remove a specific step from a goal's action plan.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the step to delete.",
+        description: "Unique identifier of the step to be permanently removed.",
       },
     },
     required: ["id"],
@@ -504,31 +484,31 @@ const DESTROY_STEP_TOOL: Tool = {
 
 /**
  * POST /stories
- * Body => { goal_id: string; step_id: string; title?: string; story_text: string; }
  */
 const CREATE_STORY_TOOL: Tool = {
   name: "goalstory_create_story",
-  description: `Create a highly personalized story for the user and present it to the user in full.
-  If you don't know enough about the user to do so you can use the 'goalstory_read_self_user' too. 
-  If you don't know enough about the user's goal and step, you can both ask the user for details and use the 'goalstory_get_story_context' tool.`,
+  description: `Generate and save a highly personalized story that visualizes achievement of the current goal/step. Uses understanding of the user's beliefs, motivations, and context to create engaging mental imagery. If context is needed, gathers it through user discussion and profile data.`,
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "ID of the goal associated with this story. (Required)",
+        description: "Unique identifier of the goal this story supports.",
       },
       step_id: {
         type: "string",
-        description: "ID of the step associated with this story. (Required)",
+        description:
+          "Unique identifier of the specific step this story visualizes.",
       },
       title: {
         type: "string",
-        description: "Optional title for this story.",
+        description:
+          "Engaging headline that captures the essence of the story.",
       },
       story_text: {
         type: "string",
-        description: "The actual text or content of the story. (Required)",
+        description:
+          "Detailed narrative that vividly illustrates goal/step achievement.",
       },
     },
     required: ["goal_id", "step_id", "title", "story_text"],
@@ -537,30 +517,30 @@ const CREATE_STORY_TOOL: Tool = {
 
 /**
  * GET /stories
- * Query => { goal_id: string; step_id: string; page?: number; limit?: number }
  */
 const READ_STORIES_TOOL: Tool = {
   name: "goalstory_read_stories",
   description:
-    "Get a paginated list of stories for a given goal/step (GET /stories). 'goal_id' and 'step_id' are required, pagination is optional.",
+    "Access the collection of personalized stories created for a specific goal/step pair, supporting reflection and motivation.",
   inputSchema: {
     type: "object",
     properties: {
       goal_id: {
         type: "string",
-        description: "ID of the goal whose stories we want.",
+        description: "Unique identifier of the goal whose stories to retrieve.",
       },
       step_id: {
         type: "string",
-        description: "ID of the step whose stories we want.",
+        description: "Unique identifier of the step whose stories to retrieve.",
       },
       page: {
         type: "number",
-        description: "Page number for pagination (optional).",
+        description:
+          "Page number for viewing subsets of stories (starts at 1).",
       },
       limit: {
         type: "number",
-        description: "Number of stories per page (optional).",
+        description: "Maximum number of stories to return per page.",
       },
     },
     required: ["goal_id", "step_id"],
@@ -569,18 +549,17 @@ const READ_STORIES_TOOL: Tool = {
 
 /**
  * GET /stories/:id
- * Args => { id: string }
  */
 const READ_ONE_STORY_TOOL: Tool = {
   name: "goalstory_read_one_story",
   description:
-    "Retrieve data for a single story (GET /stories/:id). 'id' is required.",
+    "Retrieve a specific story to revisit the visualization and mental imagery created for goal achievement.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The ID of the story to retrieve. (Required)",
+        description: "Unique identifier of the story to retrieve.",
       },
     },
     required: ["id"],
