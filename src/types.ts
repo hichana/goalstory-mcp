@@ -90,6 +90,11 @@ export interface GoalstoryDestroyStepInput {
   id: string;
 }
 
+export interface GoalstoryUpdateStepNotesInput {
+  id: string;
+  notes: string;
+}
+
 //
 // STORIES
 //

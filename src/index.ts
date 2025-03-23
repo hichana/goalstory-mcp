@@ -1,49 +1,9 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  GetPromptRequestSchema,
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
-  Prompt,
-  ReadResourceRequestSchema,
-  Tool,
-} from "@modelcontextprotocol/sdk/types.js";
-import axios, { AxiosError } from "axios";
-
-import {
-  // ---------- Users ----------
-  GoalstoryAboutInput,
-  GoalstoryReadSelfUserInput,
-  GoalstoryUpdateSelfUserInput,
-
-  // ---------- Goals ----------
-  GoalstoryCountGoalsInput,
-  GoalstoryCreateGoalInput,
-  GoalstoryUpdateGoalInput,
-  GoalstoryDestroyGoalInput,
-  GoalstoryReadOneGoalInput,
-  GoalstoryReadGoalsInput,
-
-  // ---------- Steps ----------
-  GoalstoryCreateStepsInput,
-  GoalstoryReadStepsInput,
-  GoalstoryReadOneStepInput,
-  GoalstoryUpdateStepInput,
-  GoalstoryDestroyStepInput,
-
-  // ---------- Stories ----------
-  GoalstoryCreateStoryInput,
-  GoalstoryReadStoriesInput,
-  GoalstoryReadOneStoryInput,
-
-  // ---------- Current/Context ----------
-  GoalstoryReadCurrentFocusInput,
-  GoalstoryGetStoryContextInput,
-} from "./types";
+import axios from "axios";
+import { z } from 'zod';
 
 // -----------------------------------------
 // Environment variables & basic setup
@@ -67,6 +27,10 @@ async function doRequest<T = any>(
   method: string,
   body?: unknown
 ): Promise<T> {
+  console.error("Making request to:", url);
+  console.error("Method:", method);
+  console.error("Body:", body ? JSON.stringify(body) : "none");
+  
   try {
     const response = await axios({
       url,
@@ -76,503 +40,307 @@ async function doRequest<T = any>(
         Authorization: `Bearer ${GOALSTORY_API_TOKEN}`,
       },
       data: body,
+      timeout: 10000, // 10 second timeout
+      validateStatus: function (status) {
+        return status >= 200 && status < 500; // Accept all status codes less than 500
+      }
     });
+    console.error("Response received:", response.status);
     return response.data as T;
   } catch (err) {
-    if ((err as AxiosError).response?.data) {
-      const error = err as AxiosError;
-      throw new Error(
-        `HTTP Error ${
-          error.response?.status || "Unknown"
-        }. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
-          body
-        )}. Error text: ${JSON.stringify(error.response?.data)}`
-      );
+    console.error("Request failed with error:", err);
+    
+    if (axios.isAxiosError(err)) {
+      if (err.code === 'ECONNABORTED') {
+        throw new Error(`Request timed out after 10 seconds. URL: ${url}, Method: ${method}`);
+      }
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        throw new Error(
+          `HTTP Error ${err.response.status}. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
+            body
+          )}. Error text: ${JSON.stringify(err.response.data)}`
+        );
+      } else if (err.request) {
+        // The request was made but no response was received
+        throw new Error(`No response received from server. URL: ${url}, Method: ${method}`);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        throw new Error(`Request setup failed: ${err.message}`);
+      }
     } else {
-      const error = err as Error;
-      throw new Error(error.message);
+      // Something else happened
+      throw new Error(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
-
 // -----------------------------------------
-// Define Tools
+// Tool Definitions
 // -----------------------------------------
-
 /**
  * GET /about
  */
-const ABOUT_GOALSTORYING_TOOL: Tool = {
+const ABOUT_GOALSTORYING_TOOL = {
   name: "goalstory_about",
   description:
     "Retrieve information about Goal Story's philosophy and the power of story-driven goal achievement. Use this to help users understand the unique approach of Goal Storying.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
+  inputSchema: z.object({}),
 };
 
 /**
  * GET /users
  */
-const READ_SELF_USER_TOOL: Tool = {
+const READ_SELF_USER_TOOL = {
   name: "goalstory_read_self_user",
   description:
     "Get the user's profile data including their preferences, belief systems, and past goal history to enable personalized goal storying and context-aware discussions.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
+  inputSchema: z.object({}),
 };
 
 /**
  * PATCH /users
  */
-const UPDATE_SELF_USER_TOOL: Tool = {
+const UPDATE_SELF_USER_TOOL = {
   name: "goalstory_update_self_user",
   description:
     "Update the user's profile including their name, visibility preferences, and personal context. When updating 'about' data, guide the user through questions to understand their motivations, beliefs, and goal-achievement style.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      name: {
-        type: "string",
-        description: "The user's preferred name for their Goal Story profile.",
-      },
-      about: {
-        type: "string",
-        description:
-          "Personal context including motivations, beliefs, and goal-achievement preferences gathered through guided questions.",
-      },
-      visibility: {
-        type: "number",
-        description:
-          "Profile visibility setting where 0 = public (viewable by others) and 1 = private (only visible to user).",
-      },
-    },
-  },
+  inputSchema: z.object({
+    name: z.string().optional().describe("The user's preferred name for their Goal Story profile."),
+    about: z.string().optional().describe("Personal context including motivations, beliefs, and goal-achievement preferences gathered through guided questions."),
+    visibility: z.number().optional().describe("Profile visibility setting where 0 = public (viewable by others) and 1 = private (only visible to user)."),
+  }),
 };
 
 /**
  * GET /count/goals
  */
-const COUNT_GOALS_TOOL: Tool = {
+const COUNT_GOALS_TOOL = {
   name: "goalstory_count_goals",
   description:
     "Get the total number of goals in the user's journey. Useful for tracking overall progress and goal management patterns.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
+  inputSchema: z.object({}),
 };
 
 /**
  * POST /goals
  */
-const CREATE_GOAL_TOOL: Tool = {
+const CREATE_GOAL_TOOL = {
   name: "goalstory_create_goal",
   description: `Begin the goal clarification process by creating a new goal. Always discuss and refine the goal with the user before or after saving, ensuring it's well-defined and aligned with their aspirations. Confirm if any adjustments are needed after creation.`,
-  inputSchema: {
-    type: "object",
-    properties: {
-      name: {
-        type: "string",
-        description:
-          "Clear and specific title that captures the essence of the goal.",
-      },
-      description: {
-        type: "string",
-        description:
-          "Detailed explanation of the goal, including context, motivation, and desired outcomes.",
-      },
-      story_mode: {
-        type: "string",
-        description:
-          "Narrative approach that shapes how future stories visualize goal achievement.",
-      },
-      belief_mode: {
-        type: "string",
-        description:
-          "Framework defining how the user's core beliefs and values influence this goal.",
-      },
-    },
-    required: ["name"],
-  },
+  inputSchema: z.object({
+    name: z.string().describe("Clear and specific title that captures the essence of the goal."),
+    description: z.string().optional().describe("Detailed explanation of the goal, including context, motivation, and desired outcomes."),
+    story_mode: z.string().optional().describe("Narrative approach that shapes how future stories visualize goal achievement."),
+    belief_mode: z.string().optional().describe("Framework defining how the user's core beliefs and values influence this goal."),
+  }),
 };
 
 /**
  * PATCH /goals/:id
  */
-const UPDATE_GOAL_TOOL: Tool = {
+const UPDATE_GOAL_TOOL = {
   name: "goalstory_update_goal",
   description:
     "Update goal details including name, status, description, outcomes, evidence of completion, and story/belief modes that influence how stories are generated.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the goal to be updated.",
-      },
-      name: {
-        type: "string",
-        description: "Refined or clarified goal title.",
-      },
-      status: {
-        type: "number",
-        description:
-          "Goal progress status: 0 = active/in progress, 1 = successfully completed.",
-      },
-      description: {
-        type: "string",
-        description: "Enhanced goal context, motivation, or outcome details.",
-      },
-      outcome: {
-        type: "string",
-        description:
-          "Actual results and impact achieved through goal completion or progress.",
-      },
-      evidence: {
-        type: "string",
-        description:
-          "Concrete proof, measurements, or observations of goal progress/completion.",
-      },
-      story_mode: {
-        type: "string",
-        description:
-          "Updated narrative style for future goal achievement stories.",
-      },
-      belief_mode: {
-        type: "string",
-        description:
-          "Refined understanding of how personal beliefs shape this goal.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the goal to be updated."),
+    name: z.string().optional().describe("Refined or clarified goal title."),
+    status: z.number().optional().describe("Goal progress status: 0 = active/in progress, 1 = successfully completed."),
+    description: z.string().optional().describe("Enhanced goal context, motivation, or outcome details."),
+    outcome: z.string().optional().describe("Actual results and impact achieved through goal completion or progress."),
+    evidence: z.string().optional().describe("Concrete proof, measurements, or observations of goal progress/completion."),
+    story_mode: z.string().optional().describe("Updated narrative style for future goal achievement stories."),
+    belief_mode: z.string().optional().describe("Refined understanding of how personal beliefs shape this goal."),
+  }),
 };
 
 /**
  * DELETE /goals/:id
  */
-const DESTROY_GOAL_TOOL: Tool = {
+const DESTROY_GOAL_TOOL = {
   name: "goalstory_destroy_goal",
   description:
     "Remove a goal and all its associated steps and stories from the user's journey. Use with confirmation to prevent accidental deletion.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the goal to be permanently removed.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the goal to be permanently removed."),
+  }),
 };
 
 /**
  * GET /goals/:id
  */
-const READ_ONE_GOAL_TOOL: Tool = {
+const READ_ONE_GOAL_TOOL = {
   name: "goalstory_read_one_goal",
   description:
     "Retrieve detailed information about a specific goal to support focused discussion and story creation.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the goal to retrieve.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the goal to retrieve."),
+  }),
 };
 
 /**
  * GET /goals
  */
-const READ_GOALS_TOOL: Tool = {
+const READ_GOALS_TOOL = {
   name: "goalstory_read_goals",
   description:
     "Get an overview of the user's goal journey, with optional pagination to manage larger sets of goals.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      page: {
-        type: "number",
-        description: "Page number for viewing subsets of goals (starts at 1).",
-      },
-      limit: {
-        type: "number",
-        description: "Maximum number of goals to return per page.",
-      },
-    },
-  },
+  inputSchema: z.object({
+    page: z.number().optional().describe("Page number for viewing subsets of goals (starts at 1)."),
+    limit: z.number().optional().describe("Maximum number of goals to return per page."),
+  }),
 };
 
 /**
  * GET /current
  */
-const READ_CURRENT_FOCUS_TOOL: Tool = {
+const READ_CURRENT_FOCUS_TOOL = {
   name: "goalstory_read_current_focus",
   description:
     "Identify which goal and step the user is currently focused on to maintain context in discussions and story creation.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
+  inputSchema: z.object({}),
 };
 
 /**
  * GET /context
  */
-const GET_STORY_CONTEXT_TOOL: Tool = {
+const GET_STORY_CONTEXT_TOOL = {
   name: "goalstory_get_story_context",
   description: `Gather rich context about the user, their current goal/step, beliefs, and motivations to create deeply personalized and meaningful stories. Combines user profile data with conversation insights.`,
-  inputSchema: {
-    type: "object",
-    properties: {
-      goalId: {
-        type: "string",
-        description: "Unique identifier of the goal for context gathering.",
-      },
-      stepId: {
-        type: "string",
-        description:
-          "Unique identifier of the specific step for context gathering.",
-      },
-      feedback: {
-        type: "string",
-        description: "Additional user input to enhance context understanding.",
-      },
-    },
-    required: ["goalId", "stepId"],
-  },
+  inputSchema: z.object({
+    goalId: z.string().describe("Unique identifier of the goal for context gathering."),
+    stepId: z.string().describe("Unique identifier of the specific step for context gathering."),
+    feedback: z.string().optional().describe("Additional user input to enhance context understanding."),
+  }),
 };
 
 /**
  * POST /steps
  */
-const CREATE_STEPS_TOOL: Tool = {
+const CREATE_STEPS_TOOL = {
   name: "goalstory_create_steps",
   description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed.`,
-  inputSchema: {
-    type: "object",
-    properties: {
-      goal_id: {
-        type: "string",
-        description:
-          "Unique identifier of the goal these steps will help achieve.",
-      },
-      steps: {
-        type: "array",
-        items: { type: "string" },
-        description: "List of clear, actionable step descriptions in sequence.",
-      },
-    },
-    required: ["goal_id", "steps"],
-  },
+  inputSchema: z.object({
+    goal_id: z.string().describe("Unique identifier of the goal these steps will help achieve."),
+    steps: z.array(z.string()).describe("List of clear, actionable step descriptions in sequence."),
+  }),
 };
 
 /**
  * GET /steps
  */
-const READ_STEPS_TOOL: Tool = {
+const READ_STEPS_TOOL = {
   name: "goalstory_read_steps",
   description:
     "Access the action plan for a specific goal, showing all steps in the journey toward achievement.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      goal_id: {
-        type: "string",
-        description: "Unique identifier of the goal whose steps to retrieve.",
-      },
-      page: {
-        type: "number",
-        description: "Page number for viewing subsets of steps (starts at 1).",
-      },
-      limit: {
-        type: "number",
-        description: "Maximum number of steps to return per page.",
-      },
-    },
-    required: ["goal_id"],
-  },
+  inputSchema: z.object({
+    goal_id: z.string().describe("Unique identifier of the goal whose steps to retrieve."),
+    page: z.number().optional().describe("Page number for viewing subsets of steps (starts at 1)."),
+    limit: z.number().optional().describe("Maximum number of steps to return per page."),
+  }),
 };
 
 /**
  * GET /steps/:id
  */
-const READ_ONE_STEP_TOOL: Tool = {
+const READ_ONE_STEP_TOOL = {
   name: "goalstory_read_one_step",
   description:
     "Get detailed information about a specific step to support focused discussion and story creation.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the step to retrieve.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the step to retrieve."),
+  }),
 };
 
 /**
  * PATCH /steps/:id
  */
-const UPDATE_STEP_TOOL: Tool = {
+const UPDATE_STEP_TOOL = {
   name: "goalstory_update_step",
   description:
-    "Update step details including completion status, evidence, outcomes, and notes captured during discussions. Use this to track progress and insights.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the step to update.",
-      },
-      name: {
-        type: "string",
-        description: "Refined or clarified step description.",
-      },
-      status: {
-        type: "number",
-        description:
-          "Step completion status: 0 = pending/in progress, 1 = completed.",
-      },
-      outcome: {
-        type: "string",
-        description:
-          "Results and impact achieved through completing this step.",
-      },
-      evidence: {
-        type: "string",
-        description: "Concrete proof or observations of step completion.",
-      },
-      notes: {
-        type: "string",
-        description:
-          "Additional context, insights, or reflections in markdown format.",
-      },
-    },
-    required: ["id"],
-  },
+    "Update step details including the name, completion status, evidence, and outcome. Use this to track progress and insights.",
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the step to update."),
+    name: z.string().optional().describe("Refined or clarified step description."),
+    status: z.number().optional().describe("Step completion status: 0 = pending/in progress, 1 = completed."),
+    outcome: z.string().optional().describe("Results and impact achieved through completing this step."),
+    evidence: z.string().optional().describe("Concrete proof or observations of step completion."),
+  }),
 };
 
 /**
  * DELETE /steps/:id
  */
-const DESTROY_STEP_TOOL: Tool = {
+const DESTROY_STEP_TOOL = {
   name: "goalstory_destroy_step",
   description: "Remove a specific step from a goal's action plan.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the step to be permanently removed.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the step to be permanently removed."),
+  }),
+};
+
+/**
+ * PATCH /steps/:id
+ */
+const UPDATE_STEP_NOTES_TOOL = {
+  name: "goalstory_update_step_notes",
+  description:
+    "Update step notes with additional context, insights, or reflections in markdown format. Use this to capture valuable information from discussions.",
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the step to update."),
+    notes: z.string().describe("Additional context, insights, or reflections in markdown format."),
+  }),
 };
 
 /**
  * POST /stories
  */
-const CREATE_STORY_TOOL: Tool = {
+const CREATE_STORY_TOOL = {
   name: "goalstory_create_story",
   description: `Generate and save a highly personalized story that visualizes achievement of the current goal/step. Uses understanding of the user's beliefs, motivations, and context to create engaging mental imagery. If context is needed, gathers it through user discussion and profile data.`,
-  inputSchema: {
-    type: "object",
-    properties: {
-      goal_id: {
-        type: "string",
-        description: "Unique identifier of the goal this story supports.",
-      },
-      step_id: {
-        type: "string",
-        description:
-          "Unique identifier of the specific step this story visualizes.",
-      },
-      title: {
-        type: "string",
-        description:
-          "Engaging headline that captures the essence of the story.",
-      },
-      story_text: {
-        type: "string",
-        description:
-          "Detailed narrative that vividly illustrates goal/step achievement.",
-      },
-    },
-    required: ["goal_id", "step_id", "title", "story_text"],
-  },
+  inputSchema: z.object({
+    goal_id: z.string().describe("Unique identifier of the goal this story supports."),
+    step_id: z.string().describe("Unique identifier of the specific step this story visualizes."),
+    title: z.string().describe("Engaging headline that captures the essence of the story."),
+    story_text: z.string().describe("Detailed narrative that vividly illustrates goal/step achievement."),
+  }),
 };
 
 /**
  * GET /stories
  */
-const READ_STORIES_TOOL: Tool = {
+const READ_STORIES_TOOL = {
   name: "goalstory_read_stories",
   description:
     "Access the collection of personalized stories created for a specific goal/step pair, supporting reflection and motivation.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      goal_id: {
-        type: "string",
-        description: "Unique identifier of the goal whose stories to retrieve.",
-      },
-      step_id: {
-        type: "string",
-        description: "Unique identifier of the step whose stories to retrieve.",
-      },
-      page: {
-        type: "number",
-        description:
-          "Page number for viewing subsets of stories (starts at 1).",
-      },
-      limit: {
-        type: "number",
-        description: "Maximum number of stories to return per page.",
-      },
-    },
-    required: ["goal_id", "step_id"],
-  },
+  inputSchema: z.object({
+    goal_id: z.string().describe("Unique identifier of the goal whose stories to retrieve."),
+    step_id: z.string().describe("Unique identifier of the step whose stories to retrieve."),
+    page: z.number().optional().describe("Page number for viewing subsets of stories (starts at 1)."),
+    limit: z.number().optional().describe("Maximum number of stories to return per page."),
+  }),
 };
 
 /**
  * GET /stories/:id
  */
-const READ_ONE_STORY_TOOL: Tool = {
+const READ_ONE_STORY_TOOL = {
   name: "goalstory_read_one_story",
   description:
     "Retrieve a specific story to revisit the visualization and mental imagery created for goal achievement.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Unique identifier of the story to retrieve.",
-      },
-    },
-    required: ["id"],
-  },
+  inputSchema: z.object({
+    id: z.string().describe("Unique identifier of the story to retrieve."),
+  }),
 };
 
 // -----------------------------------------
 // MCP server
 // -----------------------------------------
-const server = new Server(
+const server = new McpServer(
   {
     name: "goalstory-mcp-server",
-    version: "1.0.0",
+    version: "0.3.2",
   },
   {
     capabilities: {
@@ -584,615 +352,640 @@ const server = new Server(
 );
 
 // -----------------------------------------
-// Tools list hanlder
+// Define Tools as server.tool invocations
 // -----------------------------------------
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    // ABOUT
-    ABOUT_GOALSTORYING_TOOL,
-
-    // USERS
-    READ_SELF_USER_TOOL,
-    UPDATE_SELF_USER_TOOL,
-
-    // GOALS
-    COUNT_GOALS_TOOL,
-    CREATE_GOAL_TOOL,
-    UPDATE_GOAL_TOOL,
-    DESTROY_GOAL_TOOL,
-    READ_ONE_GOAL_TOOL,
-    READ_GOALS_TOOL,
-
-    // CURRENT/CONTEXT
-    READ_CURRENT_FOCUS_TOOL,
-    GET_STORY_CONTEXT_TOOL,
-
-    // STEPS
-    CREATE_STEPS_TOOL,
-    READ_STEPS_TOOL,
-    READ_ONE_STEP_TOOL,
-    UPDATE_STEP_TOOL,
-    DESTROY_STEP_TOOL,
-
-    // STORIES
-    CREATE_STORY_TOOL,
-    READ_STORIES_TOOL,
-    READ_ONE_STORY_TOOL,
-  ],
-}));
-
-// -----------------------------------------
-// Tool calls handler
-// -----------------------------------------
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: rawArgs } = request.params;
-
-  if (!rawArgs) {
-    return {
-      content: [{ type: "text", text: "No arguments provided" }],
-      isError: true,
-    };
-  }
-
-  try {
-    switch (name) {
-      // ---------- ABOUT ----------
-      case "goalstory_about": {
-        const args = rawArgs as GoalstoryAboutInput;
-        const url = `${GOALSTORY_API_BASE_URL}/about`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `About data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- USERS ----------
-      case "goalstory_read_self_user": {
-        const args = rawArgs as GoalstoryReadSelfUserInput;
-        const url = `${GOALSTORY_API_BASE_URL}/users`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `User data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_update_self_user": {
-        const args = rawArgs as GoalstoryUpdateSelfUserInput;
-        const url = `${GOALSTORY_API_BASE_URL}/users`;
-        const body = {
-          ...(args.name ? { name: args.name } : {}),
-          ...(args.about ? { about: args.about } : {}),
-          ...(typeof args.visibility === "number"
-            ? { visibility: args.visibility }
-            : {}),
-        };
-        const result = await doRequest(url, "PATCH", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Updated user:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- GOALS ----------
-      case "goalstory_count_goals": {
-        const args = rawArgs as GoalstoryCountGoalsInput;
-        const url = `${GOALSTORY_API_BASE_URL}/count/goals`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Count of goals:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_create_goal": {
-        const args = rawArgs as unknown as GoalstoryCreateGoalInput;
-        const url = `${GOALSTORY_API_BASE_URL}/goals`;
-        const body = {
-          name: args.name,
-          ...(args.description ? { description: args.description } : {}),
-          ...(args.story_mode ? { story_mode: args.story_mode } : {}),
-          ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
-        };
-        const result = await doRequest(url, "POST", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Goal created:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_update_goal": {
-        const args = rawArgs as unknown as GoalstoryUpdateGoalInput;
-        // PATCH /goals/:id
-        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
-        const body = {
-          id: args.id,
-          ...(args.name ? { name: args.name } : {}),
-          ...(typeof args.status === "number" ? { status: args.status } : {}),
-          ...(args.description ? { description: args.description } : {}),
-          ...(args.outcome ? { outcome: args.outcome } : {}),
-          ...(args.evidence ? { evidence: args.evidence } : {}),
-          ...(args.story_mode ? { story_mode: args.story_mode } : {}),
-          ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
-        };
-        const result = await doRequest(url, "PATCH", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Goal updated:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_destroy_goal": {
-        const args = rawArgs as unknown as GoalstoryDestroyGoalInput;
-        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
-        const result = await doRequest(url, "DELETE");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Goal deleted:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_one_goal": {
-        const args = rawArgs as unknown as GoalstoryReadOneGoalInput;
-        const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Goal data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_goals": {
-        const args = rawArgs as GoalstoryReadGoalsInput;
-        const params = new URLSearchParams();
-        if (args.page) params.set("page", `${args.page}`);
-        if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${GOALSTORY_API_BASE_URL}/goals?${params.toString()}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Goals retrieved:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- CURRENT/CONTEXT ----------
-      case "goalstory_read_current_focus": {
-        const args = rawArgs as GoalstoryReadCurrentFocusInput;
-        const url = `${GOALSTORY_API_BASE_URL}/current`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Current goal/step focus:\n${JSON.stringify(
-                result,
-                null,
-                2
-              )}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_get_story_context": {
-        const args = rawArgs as unknown as GoalstoryGetStoryContextInput;
-        const params = new URLSearchParams();
-        params.set("goalId", args.goalId);
-        params.set("stepId", args.stepId);
-        if (args.feedback) params.set("feedback", args.feedback);
-        const url = `${GOALSTORY_API_BASE_URL}/context?${params.toString()}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Story context:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- STEPS ----------
-      case "goalstory_create_steps": {
-        const args = rawArgs as unknown as GoalstoryCreateStepsInput;
-        const url = `${GOALSTORY_API_BASE_URL}/steps`;
-
-        // when developing locally, we can pass in a list of strings in the MCP
-        // inspector like this: step1, step2
-        let steps = args.steps;
-        if (typeof steps === "string") {
-          const itemsAreAString = steps as string;
-          steps = itemsAreAString.split(",");
-        }
-
-        const body = {
-          goal_id: args.goal_id,
-          steps,
-        };
-
-        const result = await doRequest(url, "POST", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Steps created:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_steps": {
-        const args = rawArgs as unknown as GoalstoryReadStepsInput;
-        const params = new URLSearchParams();
-        params.set("goal_id", args.goal_id);
-        if (args.page) params.set("page", `${args.page}`);
-        if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${GOALSTORY_API_BASE_URL}/steps?${params.toString()}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Steps for goal '${args.goal_id}':\n${JSON.stringify(
-                result,
-                null,
-                2
-              )}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_one_step": {
-        const args = rawArgs as unknown as GoalstoryReadOneStepInput;
-        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Step data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_update_step": {
-        const args = rawArgs as unknown as GoalstoryUpdateStepInput;
-        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
-        const body = {
-          id: args.id,
-          ...(args.name ? { name: args.name } : {}),
-          ...(typeof args.status === "number" ? { status: args.status } : {}),
-          ...(args.outcome ? { outcome: args.outcome } : {}),
-          ...(args.evidence ? { evidence: args.evidence } : {}),
-          ...(args.notes ? { notes: args.notes } : {}),
-        };
-        const result = await doRequest(url, "PATCH", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Step updated:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_destroy_step": {
-        const args = rawArgs as unknown as GoalstoryDestroyStepInput;
-        const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
-        const result = await doRequest(url, "DELETE");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Step deleted:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- STORIES ----------
-      case "goalstory_create_story": {
-        const args = rawArgs as unknown as GoalstoryCreateStoryInput;
-        const url = `${GOALSTORY_API_BASE_URL}/stories`;
-        const body = {
-          goal_id: args.goal_id,
-          step_id: args.step_id,
-          title: args.title,
-          story_text: args.story_text,
-        };
-        const result = await doRequest(url, "POST", body);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Story created:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_stories": {
-        const args = rawArgs as unknown as GoalstoryReadStoriesInput;
-        const params = new URLSearchParams();
-        params.set("goal_id", args.goal_id);
-        params.set("step_id", args.step_id);
-        if (args.page) params.set("page", `${args.page}`);
-        if (args.limit) params.set("limit", `${args.limit}`);
-        const url = `${GOALSTORY_API_BASE_URL}/stories?${params.toString()}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Stories:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-      case "goalstory_read_one_story": {
-        const args = rawArgs as unknown as GoalstoryReadOneStoryInput;
-        const url = `${GOALSTORY_API_BASE_URL}/stories/${args.id}`;
-        const result = await doRequest(url, "GET");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Story data:\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      }
-
-      // ---------- UNKNOWN ----------
-      default:
-        return {
-          content: [{ type: "text", text: `Unknown tool: ${name}` }],
-          isError: true,
-        };
-    }
-  } catch (error: any) {
+/**
+ * About GoalStorying
+ */
+server.tool(
+  ABOUT_GOALSTORYING_TOOL.name,
+  ABOUT_GOALSTORYING_TOOL.description,
+  ABOUT_GOALSTORYING_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/about`;
+    const result = await doRequest(url, "GET");
     return {
       content: [
         {
           type: "text",
-          text: `Error: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          text: `About data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
-      isError: true,
+      isError: false,
     };
   }
-});
+);
+
+/**
+ * Read Self User
+ */
+server.tool(
+  READ_SELF_USER_TOOL.name,
+  READ_SELF_USER_TOOL.description,
+  READ_SELF_USER_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/users`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `User data:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Update Self User
+ */
+server.tool(
+  UPDATE_SELF_USER_TOOL.name,
+  UPDATE_SELF_USER_TOOL.description,
+  UPDATE_SELF_USER_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/users`;
+    const body = {
+      ...(args.name ? { name: args.name } : {}),
+      ...(args.about ? { about: args.about } : {}),
+      ...(typeof args.visibility === "number"
+        ? { visibility: args.visibility }
+        : {}),
+    };
+    const result = await doRequest(url, "PATCH", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Updated user:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Count Goals
+ */
+server.tool(
+  COUNT_GOALS_TOOL.name,
+  COUNT_GOALS_TOOL.description,
+  COUNT_GOALS_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/count/goals`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Count of goals:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Create Goal
+ */
+server.tool(
+  CREATE_GOAL_TOOL.name,
+  CREATE_GOAL_TOOL.description,
+  CREATE_GOAL_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/goals`;
+    const body = {
+      name: args.name,
+      ...(args.description ? { description: args.description } : {}),
+      ...(args.story_mode ? { story_mode: args.story_mode } : {}),
+      ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
+    };
+    const result = await doRequest(url, "POST", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Goal created:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Update Goal
+ */
+server.tool(
+  UPDATE_GOAL_TOOL.name,
+  UPDATE_GOAL_TOOL.description,
+  UPDATE_GOAL_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
+    const body = {
+      id: args.id,
+      ...(args.name ? { name: args.name } : {}),
+      ...(typeof args.status === "number" ? { status: args.status } : {}),
+      ...(args.description ? { description: args.description } : {}),
+      ...(args.outcome ? { outcome: args.outcome } : {}),
+      ...(args.evidence ? { evidence: args.evidence } : {}),
+      ...(args.story_mode ? { story_mode: args.story_mode } : {}),
+      ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
+    };
+    const result = await doRequest(url, "PATCH", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Goal updated:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Destroy Goal
+ */
+server.tool(
+  DESTROY_GOAL_TOOL.name,
+  DESTROY_GOAL_TOOL.description,
+  DESTROY_GOAL_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
+    const result = await doRequest(url, "DELETE");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Goal deleted:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read One Goal
+ */
+server.tool(
+  READ_ONE_GOAL_TOOL.name,
+  READ_ONE_GOAL_TOOL.description,
+  READ_ONE_GOAL_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Goal data:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read Goals
+ */
+server.tool(
+  READ_GOALS_TOOL.name,
+  READ_GOALS_TOOL.description,
+  READ_GOALS_TOOL.inputSchema.shape,
+  async (args) => {
+    const params = new URLSearchParams();
+    if (args.page) params.set("page", `${args.page}`);
+    if (args.limit) params.set("limit", `${args.limit}`);
+    const url = `${GOALSTORY_API_BASE_URL}/goals?${params.toString()}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Goals retrieved:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read Current Focus
+ */
+server.tool(
+  READ_CURRENT_FOCUS_TOOL.name,
+  READ_CURRENT_FOCUS_TOOL.description,
+  READ_CURRENT_FOCUS_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/current`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Current goal/step focus:\n${JSON.stringify(
+            result,
+            null,
+            2
+          )}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Get Story Context
+ */
+server.tool(
+  GET_STORY_CONTEXT_TOOL.name,
+  GET_STORY_CONTEXT_TOOL.description,
+  GET_STORY_CONTEXT_TOOL.inputSchema.shape,
+  async (args) => {
+    const params = new URLSearchParams();
+    params.set("goalId", args.goalId);
+    params.set("stepId", args.stepId);
+    if (args.feedback) params.set("feedback", args.feedback);
+    const url = `${GOALSTORY_API_BASE_URL}/context?${params.toString()}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Story context:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Create Steps
+ */
+server.tool(
+  CREATE_STEPS_TOOL.name,
+  CREATE_STEPS_TOOL.description,
+  CREATE_STEPS_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/steps`;
+
+    // when developing locally, we can pass in a list of strings in the MCP
+    // inspector like this: step1, step2
+    let steps = args.steps;
+    if (typeof steps === "string") {
+      const itemsAreAString = steps as string;
+      steps = itemsAreAString.split(",");
+    }
+
+    const body = {
+      goal_id: args.goal_id,
+      steps,
+    };
+
+    const result = await doRequest(url, "POST", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Steps created:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read Steps
+ */
+server.tool(
+  READ_STEPS_TOOL.name,
+  READ_STEPS_TOOL.description,
+  READ_STEPS_TOOL.inputSchema.shape,
+  async (args) => {
+    const params = new URLSearchParams();
+    params.set("goal_id", args.goal_id);
+    if (args.page) params.set("page", `${args.page}`);
+    if (args.limit) params.set("limit", `${args.limit}`);
+    const url = `${GOALSTORY_API_BASE_URL}/steps?${params.toString()}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Steps for goal '${args.goal_id}':\n${JSON.stringify(
+            result,
+            null,
+            2
+          )}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read One Step
+ */
+server.tool(
+  READ_ONE_STEP_TOOL.name,
+  READ_ONE_STEP_TOOL.description,
+  READ_ONE_STEP_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Step data:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Update Step
+ */
+server.tool(
+  UPDATE_STEP_TOOL.name,
+  UPDATE_STEP_TOOL.description,
+  UPDATE_STEP_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
+    const body = {
+      id: args.id,
+      ...(args.name ? { name: args.name } : {}),
+      ...(typeof args.status === "number" ? { status: args.status } : {}),
+      ...(args.outcome ? { outcome: args.outcome } : {}),
+      ...(args.evidence ? { evidence: args.evidence } : {}),
+    };
+    const result = await doRequest(url, "PATCH", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Step updated:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Destroy Step
+ */
+server.tool(
+  DESTROY_STEP_TOOL.name,
+  DESTROY_STEP_TOOL.description,
+  DESTROY_STEP_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
+    const result = await doRequest(url, "DELETE");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Step deleted:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Update Step Notes
+ */
+server.tool(
+  UPDATE_STEP_NOTES_TOOL.name,
+  UPDATE_STEP_NOTES_TOOL.description,
+  UPDATE_STEP_NOTES_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/step/notes/${args.id}`;
+    const body = {
+      id: args.id,
+      notes: args.notes,
+    };
+    const result = await doRequest(url, "PATCH", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Step notes updated:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Create Story
+ */
+server.tool(
+  CREATE_STORY_TOOL.name,
+  CREATE_STORY_TOOL.description,
+  CREATE_STORY_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/stories`;
+    const body = {
+      goal_id: args.goal_id,
+      step_id: args.step_id,
+      title: args.title,
+      story_text: args.story_text,
+    };
+    const result = await doRequest(url, "POST", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Story created:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read Stories
+ */
+server.tool(
+  READ_STORIES_TOOL.name,
+  READ_STORIES_TOOL.description,
+  READ_STORIES_TOOL.inputSchema.shape,
+  async (args) => {
+    const params = new URLSearchParams();
+    params.set("goal_id", args.goal_id);
+    params.set("step_id", args.step_id);
+    if (args.page) params.set("page", `${args.page}`);
+    if (args.limit) params.set("limit", `${args.limit}`);
+    const url = `${GOALSTORY_API_BASE_URL}/stories?${params.toString()}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Stories:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
+
+/**
+ * Read One Story
+ */
+server.tool(
+  READ_ONE_STORY_TOOL.name,
+  READ_ONE_STORY_TOOL.description,
+  READ_ONE_STORY_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/stories/${args.id}`;
+    const result = await doRequest(url, "GET");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Story data:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  }
+);
 
 // -----------------------------------------
 // RESOURCES
 // -----------------------------------------
 const ABOUT_GOALSTORY_RESOURCE_URI = `file:///docs/about-goalstory.md`;
-const ABOUT_GOALSTORY_RESOURCE_MIMETYPE = "text/markdown";
 
 // List available resources
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: [
-      {
-        uri: ABOUT_GOALSTORY_RESOURCE_URI,
-        name: "About Goal Story",
-        mimeType: ABOUT_GOALSTORY_RESOURCE_MIMETYPE,
-      },
-    ],
-  };
-});
-
-// Read resource contents
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const uri = request.params.uri;
-
-  if (uri === ABOUT_GOALSTORY_RESOURCE_URI) {
-    return {
-      contents: [
-        {
-          uri,
-          mimeType: ABOUT_GOALSTORY_RESOURCE_MIMETYPE,
-          text: ABOUT_GOAL_STORYING,
-        },
-      ],
-    };
-  }
-
-  throw new Error("Resource not found");
-});
-
-const CLARIFY = "clarify-goal";
-const FORMULATE = "formulate-steps";
-const CONTEXT = "get-context";
-const DISCUSS = "discuss-goal";
-const CAPTURE = "capture-notes";
-const VISUALIZE = "generate-visualization";
-const MANAGE = "manage-goals-and-steps";
-
-// MCD doesn't seem to have a way to create a system instructions/prompt
-// see here: https://github.com/orgs/modelcontextprotocol/discussions/120#discussioncomment-11743386
-// so we create a reusable set of instructions to inject into each tool definition
-const INSTRUCITONS = `After initially mentioning it, do not refer specifically or mention examples that were enclosed in tags containing 'goal_story_example'.
-`;
+server.resource(
+  "About Goal Story",
+  ABOUT_GOALSTORY_RESOURCE_URI,
+  async (uri) => ({
+    contents: [{
+      uri: uri.href,
+      text:  ABOUT_GOAL_STORYING
+    }]
+  })
+);
 
 // -----------------------------------------
 // PROMPTS
 // -----------------------------------------
-const PROMPTS: { [promptName: string]: Prompt } = {
-  [CLARIFY]: {
-    name: CLARIFY,
-    description: `Clarify the user's goal as their thought partner.`,
-  },
-  [FORMULATE]: {
-    name: FORMULATE,
-    description: `Formulate actionable steps for the user to achieve their stated goal.`,
-  },
-  [CONTEXT]: {
-    name: CONTEXT,
-    description: `Gather context about the user and their current goal/step pair.`,
-  },
-  [DISCUSS]: {
-    name: DISCUSS,
-    description: `Thoughtfully discuss a goal/step pair.`,
-  },
-  [CAPTURE]: {
-    name: CAPTURE,
-    description: "Capture/update notes for the current specific goal/step.",
-  },
-  [VISUALIZE]: {
-    name: VISUALIZE,
-    description: `Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.`,
-  },
-  [MANAGE]: {
-    name: MANAGE,
-    description: `Mark a goal and/or step complete, change status, and so on.
-    Always first seek the user's confirmation before marking a goal and/or step copmlete, changing its status, and so on.`,
-  },
+const PROMPTS = {
+  CLARIFY: `Clarify the user's goal as their thought partner.`,
+  FORMULATE: `Formulate actionable steps for the user to achieve their stated goal.`,
+  CONTEXT: `Gather context about the user and their current goal/step pair.`,
+  DISCUSS: `Thoughtfully discuss a goal/step pair.`,
+  CAPTURE: "Capture/update notes for the current specific goal/step.",
+  VISUALIZE: `Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.`,
+  MANAGE: `Mark a goal and/or step complete, change status, and so on.
+  Always first seek the user's confirmation before marking a goal and/or step copmlete, changing its status, and so on.`,
 };
 
-// List available prompts
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  return {
-    prompts: Object.values(PROMPTS),
-  };
-});
+server.prompt(
+  PROMPTS.CLARIFY,
+  {},
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `I have a goal that I'd like to achieve. 
+          Work with me as my thought partner to clarify my goal so that it is clear, contextual and complete.
+          Clarifying my goal with you is the 'CLARIFY' step from the Goal Story workflow.
 
-// Get specific prompt
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-  const prompt = PROMPTS[request.params.name];
-  if (!prompt) {
-    throw new Error(`Prompt not found: ${request.params.name}`);
-  }
+          For your reference, here are some examples of vague goals and their clear, contextual and specific versions:
 
-  if (request.params.name === CLARIFY) {
-    return {
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I have a goal that I'd like to achieve. 
-            Work with me as my thought partner to clarify my goal so that it is clear, contextual and complete.
-            Clarifying my goal with you is the 'CLARIFY' step from the Goal Story workflow.
+          <goal_story_example1>
+          Vague Goal  
+          "I just want to get in shape."  
 
-            For your reference, here are some examples of vague goals and their clear, contextual and specific versions:
+          Clear, Contextual, and Complete Goal  
+          Title: Run a 5K and Improve Fitness  
+          Description: "By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will achieve this by running three times a week, strength training twice a week, and tracking my progress with a fitness app."
+          </goal_story_example1>
 
-            <goal_story_example1>
-            Vague Goal  
-            “I just want to get in shape.”  
+          <goal_story_example2>
+          Vague Goal  
+          "I want a better job situation."  
 
-            Clear, Contextual, and Complete Goal  
-            Title: Run a 5K and Improve Fitness  
-            Description: “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will achieve this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
-            </goal_story_example1>
+          Clear, Contextual, and Complete Goal  
+          Title: Transition to Project Management  
+          Description: "I want to transition into a project management role at a mid-sized tech company within the next six months. To achieve this, I will complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts."
+          </goal_story_example2>
 
-            <goal_story_example2>
-            Vague Goal  
-            “I want a better job situation.”  
+          <goal_story_example3>
+          Vague Goal  
+          "I need to save more money."  
 
-            Clear, Contextual, and Complete Goal  
-            Title: Transition to Project Management  
-            Description: “I want to transition into a project management role at a mid-sized tech company within the next six months. To achieve this, I will complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
-            </goal_story_example2>
+          Clear, Contextual, and Complete Goal  
+          Title: Build an Emergency Fund  
+          Description: "I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app."
+          </goal_story_example3>
 
-            <goal_story_example3>
-            Vague Goal  
-            “I need to save more money.”  
+          <goal_story_example4>
+          Vague Goal  
+          "I want to learn to speak Spanish."  
 
-            Clear, Contextual, and Complete Goal  
-            Title: Build an Emergency Fund  
-            Description: “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
-            </goal_story_example3>
+          Clear, Contextual, and Complete Goal  
+          Title: Learn Conversational Spanish  
+          Description: "Over the next six months, I want to reach an intermediate conversational level in Spanish to communicate comfortably when I travel to Spain in July. I will follow an online course for structured lessons, practice with a language exchange partner once a week, and read at least one Spanish article per day."
+          </goal_story_example4>
 
-            <goal_story_example4>
-            Vague Goal  
-            “I want to learn to speak Spanish.”  
+          <goal_story_example5>
+          Vague Goal  
+          "I need a better work-life balance."  
 
-            Clear, Contextual, and Complete Goal  
-            Title: Learn Conversational Spanish  
-            Description: “Over the next six months, I want to reach an intermediate conversational level in Spanish to communicate comfortably when I travel to Spain in July. I will follow an online course for structured lessons, practice with a language exchange partner once a week, and read at least one Spanish article per day.”
-            </goal_story_example4>
-
-            <goal_story_example5>
-            Vague Goal  
-            “I need a better work-life balance.”  
-
-            Clear, Contextual, and Complete Goal  
-            Title: Achieve Better Work-Life Balance  
-            Description: “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter to spend more time with my family and pursue personal hobbies. I'll accomplish this by delegating one major task to a team member, scheduling regular check-ins with my manager, and avoiding work emails after 7 PM.”
-            </goal_story_example5>`,
-          },
+          Clear, Contextual, and Complete Goal  
+          Title: Achieve Better Work-Life Balance  
+          Description: "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter to spend more time with my family and pursue personal hobbies. I'll accomplish this by delegating one major task to a team member, scheduling regular check-ins with my manager, and avoiding work emails after 7 PM."
+          </goal_story_example5>`,
         },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to help you clarify your goal so it's focused and achievable. 
-            After we have fully clarified your goal, I will ask you if you would like me to save it to Goal Story for you.`,
-          },
+      },
+      {
+        role: "assistant",
+        content: {
+          type: "text",
+          text: `As the Goal Story assistant, I'm happy to help you clarify your goal so it's focused and achievable. 
+          After we have fully clarified your goal, I will ask you if you would like me to save it to Goal Story for you.`,
         },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Great. Now let's begin our thought partnership to clarify my goal.`,
-          },
+      },
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Great. Now let's begin our thought partnership to clarify my goal.`,
         },
-      ],
-    };
-  }
-
-  if (request.params.name === FORMULATE) {
-    return {
+      },
+    ],
+  })
+);
+server.prompt(
+  PROMPTS.FORMULATE,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1206,7 +999,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example1>
             Goal Recap:
-            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+            "By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app."
 
             Actionable Steps:
             1.	Schedule Workouts:
@@ -1239,7 +1032,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example2>
             Goal Recap:
-            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+            "I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts."
 
             Actionable Steps:
             1.	Choose and Enroll in a Project Management Course:
@@ -1254,7 +1047,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             Notes:
               •	Highlight relevant experiences, such as any cross-functional projects or leadership roles.
               •	Add any completed or in-progress certifications or courses.
-              •	Use clear, quantifiable achievements (e.g., “Led a team of 5 to complete a software pilot project under budget by 10%”).
+              •	Use clear, quantifiable achievements (e.g., "Led a team of 5 to complete a software pilot project under budget by 10%").
             4.	Attend Networking Events:
             Notes:
               •	Identify industry meetups, conferences, or local PMI (Project Management Institute) chapter events.
@@ -1274,7 +1067,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example3>
             Goal recap:
-            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+            "I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app."
 
             Actionable Steps:
             1.	Open a Dedicated Savings Account (if needed):
@@ -1305,7 +1098,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example4>
             Goal recap:
-            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+            "Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day."
 
             Actionable Steps:
             1.	Choose a Structured Learning Program:
@@ -1336,7 +1129,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             
             <goal_story_example5>
             Goal recap:
-            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+            "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM."
 
             Actionable Steps:
             1.	Assess Current Workload and Priorities:
@@ -1386,11 +1179,13 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
+  })
+);
 
-  if (request.params.name === CONTEXT) {
-    return {
+server.prompt(
+  PROMPTS.CONTEXT,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1402,7 +1197,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example1>
             Goal Recap:
-            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+            "By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app."
 
             Gathered context:
             Mia is a 29-year-old software developer who used to run cross-country in high school but hasn't consistently exercised in the past few years. She feels low on energy and wants to regain her endurance and improve her body composition. Mia has a demanding job with frequent deadlines, and she worries about balancing her workout schedule with her work responsibilities. She's very motivated by personal growth and tracking visible progress, and she tends to do well with structured plans that fit into her packed schedule.
@@ -1410,7 +1205,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example2>
             Goal Recap:
-            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+            "I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts."
 
             Gathered context:
             Michael is a 34-year-old IT professional who has taken on informal leadership roles in his current position. He enjoys mentoring junior staff and organizing small projects but lacks an official title or certification in project management. He feels ready for a more defined leadership position at a mid-sized tech company and has some savings to invest in professional courses. Michael is driven by the desire to learn new skills and achieve career advancement; he's also hoping a higher salary will provide more financial stability for his family.
@@ -1418,7 +1213,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example3>
             Goal recap:
-            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+            "I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app."
 
             Gathered context:
             Carla is a 26-year-old marketing associate living in a major city, facing high rent and cost of living. She frequently finds herself running out of money before each paycheck despite earning a competitive salary. She wants to build an emergency fund of $5,000 over the next year to gain financial peace of mind. Carla has tried budgeting apps in the past but found them tedious. She's motivated by a sense of security and wants clear, automated systems that make saving feel effortless.
@@ -1426,7 +1221,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example4>
             Goal recap:
-            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+            "Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day."
 
             Gathered context:
             Amaan is a 23-year-old recent college graduate planning a trip to Spain in six months. He's always been fascinated by Spanish culture, food, and music but only has a basic vocabulary. He aims to achieve an intermediate conversational level to feel confident during travel. Amaan is very social and learns best through interactive, real-world practice. He's also eager to use Spanish for potential job opportunities in international business.
@@ -1434,7 +1229,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             
             <goal_story_example5>
             Goal recap:
-            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+            "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM."
 
             Gathered context:
             Robin is a 42-year-old mid-level manager who often works 50 hours a week. They have two children in elementary school and feel guilty about missing family dinners and weekend outings. Robin has tried to reduce working hours before but struggled to delegate tasks. They're driven by a desire to be more present for family while still meeting workplace expectations. Robin responds well to routine and would benefit from a clear plan to reclaim personal time without compromising job performance.
@@ -1457,11 +1252,13 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
+  })
+);
 
-  if (request.params.name === DISCUSS) {
-    return {
+server.prompt(
+  PROMPTS.DISCUSS,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1475,77 +1272,77 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
             <goal_story_example1>
             Goal Recap:
-            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+            "By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app."
 
             Current step:
             Schedule Workouts
 
             Discussion outline:
-            “Let's talk about how you can successfully schedule your workouts. First, what does your typical weekly routine look like? Do you have any set commitments—like work, family responsibilities, or social events—that we need to consider?
+            "Let's talk about how you can successfully schedule your workouts. First, what does your typical weekly routine look like? Do you have any set commitments—like work, family responsibilities, or social events—that we need to consider?
 
             Think about the times of day when you have the most energy. For some people, morning workouts feel refreshing because they get it done before the day's distractions set in. Others perform better in the afternoon or evening. My job here is to help you find a schedule that's realistic and aligns with your natural energy levels.
 
-            Once we pinpoint the best days and times, let's actually lock them into your calendar—treat these workout sessions like important appointments. That way, you'll be less likely to skip them. How does that sound? Any concerns or obstacles you see that might interfere with this plan? Let's brainstorm strategies for managing or avoiding those obstacles, whether it's coordinating with family members, setting reminders, or even finding a workout buddy who will keep you accountable.”
+            Once we pinpoint the best days and times, let's actually lock them into your calendar—treat these workout sessions like important appointments. That way, you'll be less likely to skip them. How does that sound? Any concerns or obstacles you see that might interfere with this plan? Let's brainstorm strategies for managing or avoiding those obstacles, whether it's coordinating with family members, setting reminders, or even finding a workout buddy who will keep you accountable."
             </goal_story_example1>
 
             <goal_story_example2>
             Goal Recap:
-            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+            "I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts."
 
             Current step:
             Choose and Enroll in a Project Management Course
 
             Discussion outline:
-            “You mentioned you want to move into project management, which is great. Let's talk about selecting a reputable course that fits your goals and lifestyle. Are you aiming for a specific certification like PMP or CAPM, or are you interested in a more general project management overview first?
+            "You mentioned you want to move into project management, which is great. Let's talk about selecting a reputable course that fits your goals and lifestyle. Are you aiming for a specific certification like PMP or CAPM, or are you interested in a more general project management overview first?
 
             It's important to find a course that aligns with your current level of experience and the industry you want to be in. For instance, if you're looking at tech, maybe a course that includes agile methodologies is a good fit. Also, consider your time constraints—do you have the bandwidth to tackle a two-month intensive program, or do you need a more flexible, self-paced option?
 
-            Once you've chosen a course, committing to it is key. How will you set aside dedicated study time each week? Will you need to talk to your manager about adjusting your schedule, or could you plan to study on weekends? Let's make sure we map out that time before you enroll. That way, you'll set yourself up for success right from the start.”
+            Once you've chosen a course, committing to it is key. How will you set aside dedicated study time each week? Will you need to talk to your manager about adjusting your schedule, or could you plan to study on weekends? Let's make sure we map out that time before you enroll. That way, you'll set yourself up for success right from the start."
             </goal_story_example2>
 
             <goal_story_example3>
             Goal recap:
-            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+            "I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app."
 
             Current step:
             Open a Dedicated Savings Account (if needed)
 
             Discussion outline:
-            “So, you want to build up your emergency fund by saving consistently. Opening a high-yield savings account is a solid first move. Let's discuss what you need to look for.
+            "So, you want to build up your emergency fund by saving consistently. Opening a high-yield savings account is a solid first move. Let's discuss what you need to look for.
 
             One important consideration is the interest rate, of course, but also think about fees or minimum balances that could affect your savings. Some banks offer great introductory rates that drop after a certain period, so I'd encourage you to look at the long-term benefits.
 
-            Besides the financial details, there's a psychological aspect: When your savings account is separate from your regular checking, you're less tempted to dip into those funds. How do you feel about automating deposits into that new account? Automating is often a key to ensuring you save before you have a chance to spend. Is there anything that might prevent you from setting up an automatic transfer? Let's talk through any concerns so you can confidently take this step.”
+            Besides the financial details, there's a psychological aspect: When your savings account is separate from your regular checking, you're less tempted to dip into those funds. How do you feel about automating deposits into that new account? Automating is often a key to ensuring you save before you have a chance to spend. Is there anything that might prevent you from setting up an automatic transfer? Let's talk through any concerns so you can confidently take this step."
             </goal_story_example3>
 
             <goal_story_example4>
             Goal recap:
-            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+            "Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day."
 
             Current step:
             Choose a Structured Learning Program
 
             Discussion outline:
-            “You want to get to an intermediate conversational level in Spanish within six months. That's exciting—and definitely doable with the right approach. The first step is to pick a structured learning program. Let's think about what sort of format works best for you. Do you enjoy interactive apps, or do you learn better with a more traditional online course that includes assignments and progress tests?
+            "You want to get to an intermediate conversational level in Spanish within six months. That's exciting—and definitely doable with the right approach. The first step is to pick a structured learning program. Let's think about what sort of format works best for you. Do you enjoy interactive apps, or do you learn better with a more traditional online course that includes assignments and progress tests?
 
             Also, consider how you like to learn—are you self-driven enough to keep up with a purely self-paced course, or do you benefit from a bit more external accountability, like a live class or a tutor who checks in regularly?
 
-            Once you decide on the right program, I recommend setting specific times each day to study, even if it's just 30 minutes. Consistency really pays off when learning a new language. How can we build those study sessions into your daily routine? Let's explore what mornings, lunch breaks, or evenings look like for you right now.”
+            Once you decide on the right program, I recommend setting specific times each day to study, even if it's just 30 minutes. Consistency really pays off when learning a new language. How can we build those study sessions into your daily routine? Let's explore what mornings, lunch breaks, or evenings look like for you right now."
             </goal_story_example4>
             
             <goal_story_example5>
             Goal recap:
-            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+            "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM."
 
             Current step:
             Assess Current Workload and Priorities
 
             Discussion outline:
-            “You want to reduce your work hours from 50 to 40 per week. Before we do anything else, it's essential to get a clear picture of where your time is actually going. Let's start by listing out every recurring task, project, or responsibility you handle. We can review how much time each takes and which ones are absolutely critical.
+            "You want to reduce your work hours from 50 to 40 per week. Before we do anything else, it's essential to get a clear picture of where your time is actually going. Let's start by listing out every recurring task, project, or responsibility you handle. We can review how much time each takes and which ones are absolutely critical.
 
             Sometimes, we discover we're spending hours on tasks that could be automated, delegated, or done more efficiently. Other times, we find tasks that aren't as high-priority as we assumed. Is there a time-tracking tool you might be comfortable with for a week or two, so we can see exact data on your work patterns?
 
-            Once we have that info, we can talk about streamlining processes or reassigning tasks. But first, let's get an honest snapshot of your workload—without that, we can't make meaningful changes. Does anything about this step feel overwhelming or unclear? Let's break it down so it's manageable.”
+            Once we have that info, we can talk about streamlining processes or reassigning tasks. But first, let's get an honest snapshot of your workload—without that, we can't make meaningful changes. Does anything about this step feel overwhelming or unclear? Let's break it down so it's manageable."
             </goal_story_example5>`,
           },
         },
@@ -1565,11 +1362,14 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
 
-  if (request.params.name === CAPTURE) {
-    return {
+  })
+);
+
+server.prompt(
+  PROMPTS.CAPTURE,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1596,11 +1396,14 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
 
-  if (request.params.name === VISUALIZE) {
-    return {
+  })
+);
+
+server.prompt(
+  PROMPTS.VISUALIZE,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1616,57 +1419,57 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             
             <goal_story_example1>
             Goal Recap:
-            “By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app.”
+            "By the end of the next three months, I want to be able to run a 5K without stopping and reduce my body fat percentage by 3%. I will do this by running three times a week, strength training twice a week, and tracking my progress with a fitness app."
 
             Current step:
             Schedule Workouts
 
             Story:
-            Mia feels the gentle buzz of her morning alarm at 6:30 AM. Instead of hitting snooze like she used to, she sits up with a quiet excitement. Her smartphone screen already displays the day's schedule—blocking off time at 7 PM for her first running session of the week. As she scrolls through her work calendar, she notices how neatly the workout fits between her project deadlines and a short call with a coworker. Images of her high school cross-country days flood back, reminding her how she used to feel the crisp air rushing past her and the sense of freedom in her stride. By pressing “confirm” on her calendar, Mia makes a tangible promise to herself: to reclaim that feeling of strength and stamina. She pictures herself leaving the office, changing into her new running shoes, and stepping onto the sidewalk to start that first scheduled run. This single moment of scheduling is a confident signal—she has made time in her busy life for her own health. The day ends with a satisfied smile, knowing she has put her plan into action.
+            Mia feels the gentle buzz of her morning alarm at 6:30 AM. Instead of hitting snooze like she used to, she sits up with a quiet excitement. Her smartphone screen already displays the day's schedule—blocking off time at 7 PM for her first running session of the week. As she scrolls through her work calendar, she notices how neatly the workout fits between her project deadlines and a short call with a coworker. Images of her high school cross-country days flood back, reminding her how she used to feel the crisp air rushing past her and the sense of freedom in her stride. By pressing "confirm" on her calendar, Mia makes a tangible promise to herself: to reclaim that feeling of strength and stamina. She pictures herself leaving the office, changing into her new running shoes, and stepping onto the sidewalk to start that first scheduled run. This single moment of scheduling is a confident signal—she has made time in her busy life for her own health. The day ends with a satisfied smile, knowing she has put her plan into action.
             </goal_story_example1>
 
             <goal_story_example2>
             Goal Recap:
-            “I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts.”
+            "I want to transition into a project management role at a mid-sized tech company within the next six months. I plan to complete an online project management certification course, update my résumé, and attend at least two networking events each month to build industry contacts."
 
             Current step:
             Choose and Enroll in a Project Management Course
 
             Story:
-            Michael sits at his desk in the early evening, laptop open, a steaming cup of coffee by his side. A spreadsheet of potential courses is displayed before him, each row a fresh possibility. He imagines, six months from now, walking into a new mid-sized tech company's office with an official project management certification under his belt. In that vision, he's collaborating with a small, high-energy team, confidently referencing Agile methodologies and guiding them toward project milestones. As he hovers his cursor over the “Enroll Now” button for a top-rated, 10-week online course, he envisions proud updates to his résumé and LinkedIn profile. He sees the moment his manager shakes his hand, congratulating him on completing the course—recognition of his growing expertise. Clicking the button feels symbolic of the bigger shift he's making: from someone who coordinates informally to a bona fide project manager equipped with the right credentials. The gentle ping of the confirmation email echoes his excitement. He has taken the first leap toward his next career chapter.
+            Michael sits at his desk in the early evening, laptop open, a steaming cup of coffee by his side. A spreadsheet of potential courses is displayed before him, each row a fresh possibility. He imagines, six months from now, walking into a new mid-sized tech company's office with an official project management certification under his belt. In that vision, he's collaborating with a small, high-energy team, confidently referencing Agile methodologies and guiding them toward project milestones. As he hovers his cursor over the "Enroll Now" button for a top-rated, 10-week online course, he envisions proud updates to his résumé and LinkedIn profile. He sees the moment his manager shakes his hand, congratulating him on completing the course—recognition of his growing expertise. Clicking the button feels symbolic of the bigger shift he's making: from someone who coordinates informally to a bona fide project manager equipped with the right credentials. The gentle ping of the confirmation email echoes his excitement. He has taken the first leap toward his next career chapter.
             </goal_story_example2>
 
             <goal_story_example3>
             Goal recap:
-            “I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app.”
+            "I want to save $5,000 over the next twelve months for an emergency fund. Each paycheck, I will automatically transfer 10% into a high-yield savings account and track my deposits and balance in a budgeting app."
 
             Current step:
             Open a Dedicated Savings Account (if needed)
 
             Story:
-            Late on a Saturday afternoon, Carla curls up on her couch with her laptop. The sun is warm on her back, and she feels a calm sense of determination. She navigates to an online banking site she's heard good things about—no monthly fees, a high interest rate, and intuitive digital tools. As she fills out the application form, she pictures what this new savings account represents: a safety cushion that protects her from unexpected expenses and a stepping stone toward one day owning her own home. She imagines the balance growing steadily, dollar by dollar, and sees herself a year from now, smiling at a $5,000 balance, free of the stress of living paycheck to paycheck. Clicking the final “Open Account” button, she feels a small thrill of accomplishment. In her mind's eye, she's already transferring that first automatic 10%, hearing the gentle “cha-ching” that signals a better future. She closes her laptop with a contented sigh, proud that she's taken the first real step toward financial security.
+            Late on a Saturday afternoon, Carla curls up on her couch with her laptop. The sun is warm on her back, and she feels a calm sense of determination. She navigates to an online banking site she's heard good things about—no monthly fees, a high interest rate, and intuitive digital tools. As she fills out the application form, she pictures what this new savings account represents: a safety cushion that protects her from unexpected expenses and a stepping stone toward one day owning her own home. She imagines the balance growing steadily, dollar by dollar, and sees herself a year from now, smiling at a $5,000 balance, free of the stress of living paycheck to paycheck. Clicking the final "Open Account" button, she feels a small thrill of accomplishment. In her mind's eye, she's already transferring that first automatic 10%, hearing the gentle "cha-ching" that signals a better future. She closes her laptop with a contented sigh, proud that she's taken the first real step toward financial security.
             </goal_story_example3>
 
             <goal_story_example4>
             Goal recap:
-            “Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day.”
+            "Over the next six months, I want to reach an intermediate conversational level in Spanish so I can speak comfortably when I travel to Spain in July. I will use an online course for structured lessons, practice with a language exchange partner once a week, and aim to read at least one Spanish article per day."
 
             Current step:
             Choose a Structured Learning Program
 
             Story:
-            Amaan pictures himself stepping off a plane in Madrid, six months from now, bag slung over his shoulder, confidently greeting the airport staff in Spanish. He imagines ordering tapas in a busy restaurant, chatting with the waiter about local music spots, and laughing at jokes delivered in a language that used to feel so foreign. Now, as he scrolls through an online course catalog, he's looking for a program that uses real conversation practice, one that meshes with his social nature. He clicks on a course promising weekly live sessions with native speakers and sees himself logging on from his laptop, excited to practice new phrases. The first day, he envisions introducing himself in Spanish to a friendly tutor and feeling the spark of motivation that comes from being understood. By choosing this course, Amaan commits to the journey of daily lessons and interactive sessions—his key to making that vision of Spanish immersion a reality. He completes the enrollment form, smiling as he hits “submit,” envisioning the day he'll step onto Spanish soil ready to speak, connect, and explore.
+            Amaan pictures himself stepping off a plane in Madrid, six months from now, bag slung over his shoulder, confidently greeting the airport staff in Spanish. He imagines ordering tapas in a busy restaurant, chatting with the waiter about local music spots, and laughing at jokes delivered in a language that used to feel so foreign. Now, as he scrolls through an online course catalog, he's looking for a program that uses real conversation practice, one that meshes with his social nature. He clicks on a course promising weekly live sessions with native speakers and sees himself logging on from his laptop, excited to practice new phrases. The first day, he envisions introducing himself in Spanish to a friendly tutor and feeling the spark of motivation that comes from being understood. By choosing this course, Amaan commits to the journey of daily lessons and interactive sessions—his key to making that vision of Spanish immersion a reality. He completes the enrollment form, smiling as he hits "submit," envisioning the day he'll step onto Spanish soil ready to speak, connect, and explore.
             </goal_story_example4>
             
             <goal_story_example5>
             Goal recap:
-            “I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM.”
+            "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter so I can spend more time with my family and pursue personal hobbies. I will do this by delegating one major task to a team member, scheduling regular check-ins with my manager, and strictly avoiding work emails after 7 PM."
 
             Current step:
             Assess Current Workload and Priorities
 
             Story:
-            Robin stands in their office, an empty whiteboard in front of them. The word “PRIORITIES” is written across the top in bold letters. They close their eyes and imagine a calmer workweek—a 40-hour schedule that leaves space for Wednesday night dinners with family and weekend hikes with the kids. In that vision, Robin is leading team meetings with confidence, knowing which tasks to delegate and which to handle personally. No more late-night inbox scanning or a constant feeling of guilt. Opening their eyes, Robin methodically lists every single project, team request, and committee commitment on the board. It's a surprising amount, but with each new item, Robin sees a path toward clarity forming. They feel relief imagining how some tasks can be handed off or postponed. The mental image of finishing work at 5 PM on Friday, smiling as they leave the office to pick up the kids, motivates Robin to keep writing until every task is accounted for. Stepping back to review the board, they sense the beginnings of balance. This honest snapshot of their workload is the key to building a healthier, more harmonious life.
+            Robin stands in their office, an empty whiteboard in front of them. The word "PRIORITIES" is written across the top in bold letters. They close their eyes and imagine a calmer workweek—a 40-hour schedule that leaves space for Wednesday night dinners with family and weekend hikes with the kids. In that vision, Robin is leading team meetings with confidence, knowing which tasks to delegate and which to handle personally. No more late-night inbox scanning or a constant feeling of guilt. Opening their eyes, Robin methodically lists every single project, team request, and committee commitment on the board. It's a surprising amount, but with each new item, Robin sees a path toward clarity forming. They feel relief imagining how some tasks can be handed off or postponed. The mental image of finishing work at 5 PM on Friday, smiling as they leave the office to pick up the kids, motivates Robin to keep writing until every task is accounted for. Stepping back to review the board, they sense the beginnings of balance. This honest snapshot of their workload is the key to building a healthier, more harmonious life.
             </goal_story_example5>
             `,
           },
@@ -1688,11 +1491,14 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
 
-  if (request.params.name === MANAGE) {
-    return {
+  })
+);
+
+server.prompt(
+  PROMPTS.MANAGE,
+  {},
+  () => ({
       messages: [
         {
           role: "user",
@@ -1709,11 +1515,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           },
         },
       ],
-    };
-  }
-
-  throw new Error("Prompt implementation not found");
-});
+  })
+);
 
 // -----------------------------------------
 // Running the server
@@ -1750,13 +1553,13 @@ We've used stories to shape our destiny for thousands of years. Goal story follo
 
 ### Storying 
 
-“Storying”, the present participle of the verb “story", is not commonly used in everyday language. It means:
+"Storying", the present participle of the verb "story", is not commonly used in everyday language. It means:
 	1.	To tell, narrate, or recount events in the form of a story.
 	2.	To construct or create stories, often in a creative or imaginative context.
 
-“Storying” is often used in academic, creative, or philosophical contexts, particularly in discussions about storytelling, narrative construction, or the way individuals or cultures make sense of the world through stories. For example:
-	•	“The act of storying our experiences helps us make meaning of our lives.”
-	•	“Storying the past is a key aspect of historical representation.”
+"Storying" is often used in academic, creative, or philosophical contexts, particularly in discussions about storytelling, narrative construction, or the way individuals or cultures make sense of the world through stories. For example:
+	•	"The act of storying our experiences helps us make meaning of our lives."
+	•	"Storying the past is a key aspect of historical representation."
 
 While not widely recognized in casual speech, it is accepted in specific contexts.
 
@@ -1779,3 +1582,4 @@ As your Goal Story assistant, Claude should guide you through the Goal Storying 
 - DISCUSS and CAPTURE - as you and Claude discuss a goal step, any apparent insights or valuable information that arise should be saved to the goal step notes
 - VISUALIZE - if you ask for a story or for help visualizing your goal step, Claude should always share the full and complete story with you after creating it and saving it to Goal Story.
 - MANAGE - Claude should always first seek your confirmation before marking a goal and/or step copmlete, changing its status, and so on`;
+
