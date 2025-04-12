@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import axios from "axios";
-import { z } from 'zod';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import axios from 'axios'
+import { z } from 'zod'
 
 // -----------------------------------------
 // Environment variables & basic setup
 // -----------------------------------------
-const argv = process.argv.slice(2);
-const GOALSTORY_API_BASE_URL = argv[0];
-const GOALSTORY_API_TOKEN = argv[1];
+const argv = process.argv.slice(2)
+const GOALSTORY_API_BASE_URL = argv[0]
+const GOALSTORY_API_TOKEN = argv[1]
 
 if (!GOALSTORY_API_BASE_URL) {
-  console.error("Error: GOALSTORY_API_BASE_URL argument is required");
-  process.exit(1);
+  console.error('Error: GOALSTORY_API_BASE_URL argument is required')
+  process.exit(1)
 }
 if (!GOALSTORY_API_TOKEN) {
-  console.error("Error: GOALSTORY_API_TOKEN argument is required");
-  process.exit(1);
+  console.error('Error: GOALSTORY_API_TOKEN argument is required')
+  process.exit(1)
 }
 
 // Helper to make HTTP requests
@@ -27,51 +27,59 @@ async function doRequest<T = any>(
   method: string,
   body?: unknown
 ): Promise<T> {
-  console.error("Making request to:", url);
-  console.error("Method:", method);
-  console.error("Body:", body ? JSON.stringify(body) : "none");
-  
+  console.error('Making request to:', url)
+  console.error('Method:', method)
+  console.error('Body:', body ? JSON.stringify(body) : 'none')
+
   try {
     const response = await axios({
       url,
       method,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${GOALSTORY_API_TOKEN}`,
       },
       data: body,
       timeout: 10000, // 10 second timeout
       validateStatus: function (status) {
-        return status >= 200 && status < 500; // Accept all status codes less than 500
-      }
-    });
-    console.error("Response received:", response.status);
-    return response.data as T;
+        return status >= 200 && status < 500 // Accept all status codes less than 500
+      },
+    })
+    console.error('Response received:', response.status)
+    return response.data as T
   } catch (err) {
-    console.error("Request failed with error:", err);
-    
+    console.error('Request failed with error:', err)
+
     if (axios.isAxiosError(err)) {
       if (err.code === 'ECONNABORTED') {
-        throw new Error(`Request timed out after 10 seconds. URL: ${url}, Method: ${method}`);
+        throw new Error(
+          `Request timed out after 10 seconds. URL: ${url}, Method: ${method}`
+        )
       }
       if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         throw new Error(
-          `HTTP Error ${err.response.status}. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
+          `HTTP Error ${
+            err.response.status
+          }. URL: ${url}, Method: ${method}, Body: ${JSON.stringify(
             body
           )}. Error text: ${JSON.stringify(err.response.data)}`
-        );
+        )
       } else if (err.request) {
         // The request was made but no response was received
-        throw new Error(`No response received from server. URL: ${url}, Method: ${method}`);
+        throw new Error(
+          `No response received from server. URL: ${url}, Method: ${method}`
+        )
       } else {
         // Something happened in setting up the request that triggered an Error
-        throw new Error(`Request setup failed: ${err.message}`);
+        throw new Error(`Request setup failed: ${err.message}`)
       }
     } else {
       // Something else happened
-      throw new Error(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(
+        `Unexpected error: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 }
@@ -82,265 +90,394 @@ async function doRequest<T = any>(
  * GET /about
  */
 const ABOUT_GOALSTORYING_TOOL = {
-  name: "goalstory_about",
+  name: 'goalstory_about',
   description:
     "Retrieve information about Goal Story's philosophy and the power of story-driven goal achievement. Use this to help users understand the unique approach of Goal Storying.",
   inputSchema: z.object({}),
-};
+}
 
 /**
  * GET /users
  */
 const READ_SELF_USER_TOOL = {
-  name: "goalstory_read_self_user",
+  name: 'goalstory_read_self_user',
   description:
     "Get the user's profile data including their preferences, belief systems, and past goal history to enable personalized goal storying and context-aware discussions.",
   inputSchema: z.object({}),
-};
+}
 
 /**
  * PATCH /users
  */
 const UPDATE_SELF_USER_TOOL = {
-  name: "goalstory_update_self_user",
+  name: 'goalstory_update_self_user',
   description:
     "Update the user's profile including their name, visibility preferences, and personal context. When updating 'about' data, guide the user through questions to understand their motivations, beliefs, and goal-achievement style.",
   inputSchema: z.object({
-    name: z.string().optional().describe("The user's preferred name for their Goal Story profile."),
-    about: z.string().optional().describe("Personal context including motivations, beliefs, and goal-achievement preferences gathered through guided questions."),
-    visibility: z.number().optional().describe("Profile visibility setting where 0 = public (viewable by others) and 1 = private (only visible to user)."),
+    name: z
+      .string()
+      .optional()
+      .describe("The user's preferred name for their Goal Story profile."),
+    about: z
+      .string()
+      .optional()
+      .describe(
+        'Personal context including motivations, beliefs, and goal-achievement preferences gathered through guided questions.'
+      ),
+    visibility: z
+      .number()
+      .optional()
+      .describe(
+        'Profile visibility setting where 0 = public (viewable by others) and 1 = private (only visible to user).'
+      ),
   }),
-};
+}
 
 /**
  * GET /count/goals
  */
 const COUNT_GOALS_TOOL = {
-  name: "goalstory_count_goals",
+  name: 'goalstory_count_goals',
   description:
     "Get the total number of goals in the user's journey. Useful for tracking overall progress and goal management patterns.",
   inputSchema: z.object({}),
-};
+}
 
 /**
  * POST /goals
  */
 const CREATE_GOAL_TOOL = {
-  name: "goalstory_create_goal",
+  name: 'goalstory_create_goal',
   description: `Begin the goal clarification process by creating a new goal. Always discuss and refine the goal with the user before or after saving, ensuring it's well-defined and aligned with their aspirations. Confirm if any adjustments are needed after creation.`,
   inputSchema: z.object({
-    name: z.string().describe("Clear and specific title that captures the essence of the goal."),
-    description: z.string().optional().describe("Detailed explanation of the goal, including context, motivation, and desired outcomes."),
-    story_mode: z.string().optional().describe("Narrative approach that shapes how future stories visualize goal achievement."),
-    belief_mode: z.string().optional().describe("Framework defining how the user's core beliefs and values influence this goal."),
+    name: z
+      .string()
+      .describe(
+        'Clear and specific title that captures the essence of the goal.'
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        'Detailed explanation of the goal, including context, motivation, and desired outcomes.'
+      ),
+    story_mode: z
+      .string()
+      .optional()
+      .describe(
+        'Narrative approach that shapes how future stories visualize goal achievement.'
+      ),
+    belief_mode: z
+      .string()
+      .optional()
+      .describe(
+        "Framework defining how the user's core beliefs and values influence this goal."
+      ),
   }),
-};
+}
 
 /**
  * PATCH /goals/:id
  */
 const UPDATE_GOAL_TOOL = {
-  name: "goalstory_update_goal",
+  name: 'goalstory_update_goal',
   description:
-    "Update goal details including name, status, description, outcomes, evidence of completion, and story/belief modes that influence how stories are generated.",
+    'Update goal details including name, status, description, outcomes, evidence of completion, and story/belief modes that influence how stories are generated.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the goal to be updated."),
-    name: z.string().optional().describe("Refined or clarified goal title."),
-    status: z.number().optional().describe("Goal progress status: 0 = active/in progress, 1 = successfully completed."),
-    description: z.string().optional().describe("Enhanced goal context, motivation, or outcome details."),
-    outcome: z.string().optional().describe("Actual results and impact achieved through goal completion or progress."),
-    evidence: z.string().optional().describe("Concrete proof, measurements, or observations of goal progress/completion."),
-    story_mode: z.string().optional().describe("Updated narrative style for future goal achievement stories."),
-    belief_mode: z.string().optional().describe("Refined understanding of how personal beliefs shape this goal."),
+    id: z.string().describe('Unique identifier of the goal to be updated.'),
+    name: z.string().optional().describe('Refined or clarified goal title.'),
+    status: z
+      .number()
+      .optional()
+      .describe(
+        'Goal progress status: 0 = active/in progress, 1 = successfully completed.'
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe('Enhanced goal context, motivation, or outcome details.'),
+    outcome: z
+      .string()
+      .optional()
+      .describe(
+        'Actual results and impact achieved through goal completion or progress.'
+      ),
+    evidence: z
+      .string()
+      .optional()
+      .describe(
+        'Concrete proof, measurements, or observations of goal progress/completion.'
+      ),
+    story_mode: z
+      .string()
+      .optional()
+      .describe('Updated narrative style for future goal achievement stories.'),
+    belief_mode: z
+      .string()
+      .optional()
+      .describe(
+        'Refined understanding of how personal beliefs shape this goal.'
+      ),
   }),
-};
+}
 
 /**
  * DELETE /goals/:id
  */
 const DESTROY_GOAL_TOOL = {
-  name: "goalstory_destroy_goal",
+  name: 'goalstory_destroy_goal',
   description:
     "Remove a goal and all its associated steps and stories from the user's journey. Use with confirmation to prevent accidental deletion.",
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the goal to be permanently removed."),
+    id: z
+      .string()
+      .describe('Unique identifier of the goal to be permanently removed.'),
   }),
-};
+}
 
 /**
  * GET /goals/:id
  */
 const READ_ONE_GOAL_TOOL = {
-  name: "goalstory_read_one_goal",
+  name: 'goalstory_read_one_goal',
   description:
-    "Retrieve detailed information about a specific goal to support focused discussion and story creation.",
+    'Retrieve detailed information about a specific goal to support focused discussion and story creation.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the goal to retrieve."),
+    id: z.string().describe('Unique identifier of the goal to retrieve.'),
   }),
-};
+}
 
 /**
  * GET /goals
  */
 const READ_GOALS_TOOL = {
-  name: "goalstory_read_goals",
+  name: 'goalstory_read_goals',
   description:
     "Get an overview of the user's goal journey, with optional pagination to manage larger sets of goals.",
   inputSchema: z.object({
-    page: z.number().optional().describe("Page number for viewing subsets of goals (starts at 1)."),
-    limit: z.number().optional().describe("Maximum number of goals to return per page."),
+    page: z
+      .number()
+      .optional()
+      .describe('Page number for viewing subsets of goals (starts at 1).'),
+    limit: z
+      .number()
+      .optional()
+      .describe('Maximum number of goals to return per page.'),
   }),
-};
+}
 
 /**
  * GET /current
  */
 const READ_CURRENT_FOCUS_TOOL = {
-  name: "goalstory_read_current_focus",
+  name: 'goalstory_read_current_focus',
   description:
-    "Identify which goal and step the user is currently focused on to maintain context in discussions and story creation.",
+    'Identify which goal and step the user is currently focused on to maintain context in discussions and story creation.',
   inputSchema: z.object({}),
-};
+}
 
 /**
  * GET /context
  */
 const GET_STORY_CONTEXT_TOOL = {
-  name: "goalstory_get_story_context",
+  name: 'goalstory_get_story_context',
   description: `Gather rich context about the user, their current goal/step, beliefs, and motivations to create deeply personalized and meaningful stories. Combines user profile data with conversation insights.`,
   inputSchema: z.object({
-    goalId: z.string().describe("Unique identifier of the goal for context gathering."),
-    stepId: z.string().describe("Unique identifier of the specific step for context gathering."),
-    feedback: z.string().optional().describe("Additional user input to enhance context understanding."),
+    goalId: z
+      .string()
+      .describe('Unique identifier of the goal for context gathering.'),
+    stepId: z
+      .string()
+      .describe(
+        'Unique identifier of the specific step for context gathering.'
+      ),
+    feedback: z
+      .string()
+      .optional()
+      .describe('Additional user input to enhance context understanding.'),
   }),
-};
+}
 
 /**
  * POST /steps
  */
 const CREATE_STEPS_TOOL = {
-  name: "goalstory_create_steps",
+  name: 'goalstory_create_steps',
   description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed.`,
   inputSchema: z.object({
-    goal_id: z.string().describe("Unique identifier of the goal these steps will help achieve."),
-    steps: z.array(z.string()).describe("List of clear, actionable step descriptions in sequence."),
+    goal_id: z
+      .string()
+      .describe('Unique identifier of the goal these steps will help achieve.'),
+    steps: z
+      .array(z.string())
+      .describe('List of clear, actionable step descriptions in sequence.'),
   }),
-};
+}
 
 /**
  * GET /steps
  */
 const READ_STEPS_TOOL = {
-  name: "goalstory_read_steps",
+  name: 'goalstory_read_steps',
   description:
-    "Access the action plan for a specific goal, showing all steps in the journey toward achievement.",
+    'Access the action plan for a specific goal, showing all steps in the journey toward achievement.',
   inputSchema: z.object({
-    goal_id: z.string().describe("Unique identifier of the goal whose steps to retrieve."),
-    page: z.number().optional().describe("Page number for viewing subsets of steps (starts at 1)."),
-    limit: z.number().optional().describe("Maximum number of steps to return per page."),
+    goal_id: z
+      .string()
+      .describe('Unique identifier of the goal whose steps to retrieve.'),
+    page: z
+      .number()
+      .optional()
+      .describe('Page number for viewing subsets of steps (starts at 1).'),
+    limit: z
+      .number()
+      .optional()
+      .describe('Maximum number of steps to return per page.'),
   }),
-};
+}
 
 /**
  * GET /steps/:id
  */
 const READ_ONE_STEP_TOOL = {
-  name: "goalstory_read_one_step",
+  name: 'goalstory_read_one_step',
   description:
-    "Get detailed information about a specific step to support focused discussion and story creation.",
+    'Get detailed information about a specific step to support focused discussion and story creation.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the step to retrieve."),
+    id: z.string().describe('Unique identifier of the step to retrieve.'),
   }),
-};
+}
 
 /**
  * PATCH /steps/:id
  */
 const UPDATE_STEP_TOOL = {
-  name: "goalstory_update_step",
+  name: 'goalstory_update_step',
   description:
-    "Update step details including the name, completion status, evidence, and outcome. Use this to track progress and insights.",
+    'Update step details including the name, completion status, evidence, and outcome. Use this to track progress and insights.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the step to update."),
-    name: z.string().optional().describe("Refined or clarified step description."),
-    status: z.number().optional().describe("Step completion status: 0 = pending/in progress, 1 = completed."),
-    outcome: z.string().optional().describe("Results and impact achieved through completing this step."),
-    evidence: z.string().optional().describe("Concrete proof or observations of step completion."),
+    id: z.string().describe('Unique identifier of the step to update.'),
+    name: z
+      .string()
+      .optional()
+      .describe('Refined or clarified step description.'),
+    status: z
+      .number()
+      .optional()
+      .describe(
+        'Step completion status: 0 = pending/in progress, 1 = completed.'
+      ),
+    outcome: z
+      .string()
+      .optional()
+      .describe('Results and impact achieved through completing this step.'),
+    evidence: z
+      .string()
+      .optional()
+      .describe('Concrete proof or observations of step completion.'),
   }),
-};
+}
 
 /**
  * DELETE /steps/:id
  */
 const DESTROY_STEP_TOOL = {
-  name: "goalstory_destroy_step",
+  name: 'goalstory_destroy_step',
   description: "Remove a specific step from a goal's action plan.",
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the step to be permanently removed."),
+    id: z
+      .string()
+      .describe('Unique identifier of the step to be permanently removed.'),
   }),
-};
+}
 
 /**
  * PATCH /steps/:id
  */
 const UPDATE_STEP_NOTES_TOOL = {
-  name: "goalstory_update_step_notes",
+  name: 'goalstory_update_step_notes',
   description:
-    "Update step notes with additional context, insights, or reflections in markdown format. Use this to capture valuable information from discussions.",
+    'Update step notes with additional context, insights, or reflections in markdown format. Use this to capture valuable information from discussions.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the step to update."),
-    notes: z.string().describe("Additional context, insights, or reflections in markdown format."),
+    id: z.string().describe('Unique identifier of the step to update.'),
+    notes: z
+      .string()
+      .describe(
+        'Additional context, insights, or reflections in markdown format.'
+      ),
   }),
-};
+}
 
 /**
  * POST /stories
  */
 const CREATE_STORY_TOOL = {
-  name: "goalstory_create_story",
+  name: 'goalstory_create_story',
   description: `Generate and save a highly personalized story that visualizes achievement of the current goal/step. Uses understanding of the user's beliefs, motivations, and context to create engaging mental imagery. If context is needed, gathers it through user discussion and profile data.`,
   inputSchema: z.object({
-    goal_id: z.string().describe("Unique identifier of the goal this story supports."),
-    step_id: z.string().describe("Unique identifier of the specific step this story visualizes."),
-    title: z.string().describe("Engaging headline that captures the essence of the story."),
-    story_text: z.string().describe("Detailed narrative that vividly illustrates goal/step achievement."),
+    goal_id: z
+      .string()
+      .describe('Unique identifier of the goal this story supports.'),
+    step_id: z
+      .string()
+      .describe(
+        'Unique identifier of the specific step this story visualizes.'
+      ),
+    title: z
+      .string()
+      .describe('Engaging headline that captures the essence of the story.'),
+    story_text: z
+      .string()
+      .describe(
+        'Detailed narrative that vividly illustrates goal/step achievement.'
+      ),
   }),
-};
+}
 
 /**
  * GET /stories
  */
 const READ_STORIES_TOOL = {
-  name: "goalstory_read_stories",
+  name: 'goalstory_read_stories',
   description:
-    "Access the collection of personalized stories created for a specific goal/step pair, supporting reflection and motivation.",
+    'Access the collection of personalized stories created for a specific goal/step pair, supporting reflection and motivation.',
   inputSchema: z.object({
-    goal_id: z.string().describe("Unique identifier of the goal whose stories to retrieve."),
-    step_id: z.string().describe("Unique identifier of the step whose stories to retrieve."),
-    page: z.number().optional().describe("Page number for viewing subsets of stories (starts at 1)."),
-    limit: z.number().optional().describe("Maximum number of stories to return per page."),
+    goal_id: z
+      .string()
+      .describe('Unique identifier of the goal whose stories to retrieve.'),
+    step_id: z
+      .string()
+      .describe('Unique identifier of the step whose stories to retrieve.'),
+    page: z
+      .number()
+      .optional()
+      .describe('Page number for viewing subsets of stories (starts at 1).'),
+    limit: z
+      .number()
+      .optional()
+      .describe('Maximum number of stories to return per page.'),
   }),
-};
+}
 
 /**
  * GET /stories/:id
  */
 const READ_ONE_STORY_TOOL = {
-  name: "goalstory_read_one_story",
+  name: 'goalstory_read_one_story',
   description:
-    "Retrieve a specific story to revisit the visualization and mental imagery created for goal achievement.",
+    'Retrieve a specific story to revisit the visualization and mental imagery created for goal achievement.',
   inputSchema: z.object({
-    id: z.string().describe("Unique identifier of the story to retrieve."),
+    id: z.string().describe('Unique identifier of the story to retrieve.'),
   }),
-};
+}
 
 // -----------------------------------------
 // MCP server
 // -----------------------------------------
 const server = new McpServer(
   {
-    name: "goalstory-mcp-server",
-    version: "0.3.2",
+    name: 'goalstory-mcp-server',
+    version: '0.3.2',
   },
   {
     capabilities: {
@@ -349,7 +486,7 @@ const server = new McpServer(
       prompts: {},
     },
   }
-);
+)
 
 // -----------------------------------------
 // Define Tools as server.tool invocations
@@ -362,19 +499,19 @@ server.tool(
   ABOUT_GOALSTORYING_TOOL.description,
   ABOUT_GOALSTORYING_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/about`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/about`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `About data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read Self User
@@ -384,19 +521,19 @@ server.tool(
   READ_SELF_USER_TOOL.description,
   READ_SELF_USER_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/users`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/users`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `User data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Update Self User
@@ -406,26 +543,28 @@ server.tool(
   UPDATE_SELF_USER_TOOL.description,
   UPDATE_SELF_USER_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/users`;
+    const url = `${GOALSTORY_API_BASE_URL}/users`
     const body = {
       ...(args.name ? { name: args.name } : {}),
       ...(args.about ? { about: args.about } : {}),
-      ...(typeof args.visibility === "number"
-        ? { visibility: args.visibility }
+      ...(typeof args.visibility === 'number'
+        ? {
+            visibility: args.visibility,
+          }
         : {}),
-    };
-    const result = await doRequest(url, "PATCH", body);
+    }
+    const result = await doRequest(url, 'PATCH', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Updated user:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Count Goals
@@ -435,19 +574,19 @@ server.tool(
   COUNT_GOALS_TOOL.description,
   COUNT_GOALS_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/count/goals`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/count/goals`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Count of goals:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Create Goal
@@ -457,25 +596,37 @@ server.tool(
   CREATE_GOAL_TOOL.description,
   CREATE_GOAL_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/goals`;
+    const url = `${GOALSTORY_API_BASE_URL}/goals`
     const body = {
       name: args.name,
-      ...(args.description ? { description: args.description } : {}),
-      ...(args.story_mode ? { story_mode: args.story_mode } : {}),
-      ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
-    };
-    const result = await doRequest(url, "POST", body);
+      ...(args.description
+        ? {
+            description: args.description,
+          }
+        : {}),
+      ...(args.story_mode
+        ? {
+            story_mode: args.story_mode,
+          }
+        : {}),
+      ...(args.belief_mode
+        ? {
+            belief_mode: args.belief_mode,
+          }
+        : {}),
+    }
+    const result = await doRequest(url, 'POST', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Goal created:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Update Goal
@@ -485,29 +636,41 @@ server.tool(
   UPDATE_GOAL_TOOL.description,
   UPDATE_GOAL_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`
     const body = {
       id: args.id,
       ...(args.name ? { name: args.name } : {}),
-      ...(typeof args.status === "number" ? { status: args.status } : {}),
-      ...(args.description ? { description: args.description } : {}),
+      ...(typeof args.status === 'number' ? { status: args.status } : {}),
+      ...(args.description
+        ? {
+            description: args.description,
+          }
+        : {}),
       ...(args.outcome ? { outcome: args.outcome } : {}),
       ...(args.evidence ? { evidence: args.evidence } : {}),
-      ...(args.story_mode ? { story_mode: args.story_mode } : {}),
-      ...(args.belief_mode ? { belief_mode: args.belief_mode } : {}),
-    };
-    const result = await doRequest(url, "PATCH", body);
+      ...(args.story_mode
+        ? {
+            story_mode: args.story_mode,
+          }
+        : {}),
+      ...(args.belief_mode
+        ? {
+            belief_mode: args.belief_mode,
+          }
+        : {}),
+    }
+    const result = await doRequest(url, 'PATCH', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Goal updated:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Destroy Goal
@@ -517,19 +680,19 @@ server.tool(
   DESTROY_GOAL_TOOL.description,
   DESTROY_GOAL_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
-    const result = await doRequest(url, "DELETE");
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`
+    const result = await doRequest(url, 'DELETE')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Goal deleted:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read One Goal
@@ -539,19 +702,19 @@ server.tool(
   READ_ONE_GOAL_TOOL.description,
   READ_ONE_GOAL_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/goals/${args.id}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Goal data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read Goals
@@ -561,22 +724,22 @@ server.tool(
   READ_GOALS_TOOL.description,
   READ_GOALS_TOOL.inputSchema.shape,
   async (args) => {
-    const params = new URLSearchParams();
-    if (args.page) params.set("page", `${args.page}`);
-    if (args.limit) params.set("limit", `${args.limit}`);
-    const url = `${GOALSTORY_API_BASE_URL}/goals?${params.toString()}`;
-    const result = await doRequest(url, "GET");
+    const params = new URLSearchParams()
+    if (args.page) params.set('page', `${args.page}`)
+    if (args.limit) params.set('limit', `${args.limit}`)
+    const url = `${GOALSTORY_API_BASE_URL}/goals?${params.toString()}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Goals retrieved:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read Current Focus
@@ -586,23 +749,19 @@ server.tool(
   READ_CURRENT_FOCUS_TOOL.description,
   READ_CURRENT_FOCUS_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/current`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/current`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
-          text: `Current goal/step focus:\n${JSON.stringify(
-            result,
-            null,
-            2
-          )}`,
+          type: 'text',
+          text: `Current goal/step focus:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Get Story Context
@@ -612,23 +771,23 @@ server.tool(
   GET_STORY_CONTEXT_TOOL.description,
   GET_STORY_CONTEXT_TOOL.inputSchema.shape,
   async (args) => {
-    const params = new URLSearchParams();
-    params.set("goalId", args.goalId);
-    params.set("stepId", args.stepId);
-    if (args.feedback) params.set("feedback", args.feedback);
-    const url = `${GOALSTORY_API_BASE_URL}/context?${params.toString()}`;
-    const result = await doRequest(url, "GET");
+    const params = new URLSearchParams()
+    params.set('goalId', args.goalId)
+    params.set('stepId', args.stepId)
+    if (args.feedback) params.set('feedback', args.feedback)
+    const url = `${GOALSTORY_API_BASE_URL}/context?${params.toString()}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Story context:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Create Steps
@@ -638,33 +797,33 @@ server.tool(
   CREATE_STEPS_TOOL.description,
   CREATE_STEPS_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/steps`;
+    const url = `${GOALSTORY_API_BASE_URL}/steps`
 
     // when developing locally, we can pass in a list of strings in the MCP
     // inspector like this: step1, step2
-    let steps = args.steps;
-    if (typeof steps === "string") {
-      const itemsAreAString = steps as string;
-      steps = itemsAreAString.split(",");
+    let steps = args.steps
+    if (typeof steps === 'string') {
+      const itemsAreAString = steps as string
+      steps = itemsAreAString.split(',')
     }
 
     const body = {
       goal_id: args.goal_id,
       steps,
-    };
+    }
 
-    const result = await doRequest(url, "POST", body);
+    const result = await doRequest(url, 'POST', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Steps created:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read Steps
@@ -674,16 +833,16 @@ server.tool(
   READ_STEPS_TOOL.description,
   READ_STEPS_TOOL.inputSchema.shape,
   async (args) => {
-    const params = new URLSearchParams();
-    params.set("goal_id", args.goal_id);
-    if (args.page) params.set("page", `${args.page}`);
-    if (args.limit) params.set("limit", `${args.limit}`);
-    const url = `${GOALSTORY_API_BASE_URL}/steps?${params.toString()}`;
-    const result = await doRequest(url, "GET");
+    const params = new URLSearchParams()
+    params.set('goal_id', args.goal_id)
+    if (args.page) params.set('page', `${args.page}`)
+    if (args.limit) params.set('limit', `${args.limit}`)
+    const url = `${GOALSTORY_API_BASE_URL}/steps?${params.toString()}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Steps for goal '${args.goal_id}':\n${JSON.stringify(
             result,
             null,
@@ -692,9 +851,9 @@ server.tool(
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read One Step
@@ -704,19 +863,19 @@ server.tool(
   READ_ONE_STEP_TOOL.description,
   READ_ONE_STEP_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Step data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Update Step
@@ -726,26 +885,26 @@ server.tool(
   UPDATE_STEP_TOOL.description,
   UPDATE_STEP_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`
     const body = {
       id: args.id,
       ...(args.name ? { name: args.name } : {}),
-      ...(typeof args.status === "number" ? { status: args.status } : {}),
+      ...(typeof args.status === 'number' ? { status: args.status } : {}),
       ...(args.outcome ? { outcome: args.outcome } : {}),
       ...(args.evidence ? { evidence: args.evidence } : {}),
-    };
-    const result = await doRequest(url, "PATCH", body);
+    }
+    const result = await doRequest(url, 'PATCH', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Step updated:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Destroy Step
@@ -755,19 +914,19 @@ server.tool(
   DESTROY_STEP_TOOL.description,
   DESTROY_STEP_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`;
-    const result = await doRequest(url, "DELETE");
+    const url = `${GOALSTORY_API_BASE_URL}/steps/${args.id}`
+    const result = await doRequest(url, 'DELETE')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Step deleted:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Update Step Notes
@@ -777,23 +936,23 @@ server.tool(
   UPDATE_STEP_NOTES_TOOL.description,
   UPDATE_STEP_NOTES_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/step/notes/${args.id}`;
+    const url = `${GOALSTORY_API_BASE_URL}/step/notes/${args.id}`
     const body = {
       id: args.id,
       notes: args.notes,
-    };
-    const result = await doRequest(url, "PATCH", body);
+    }
+    const result = await doRequest(url, 'PATCH', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Step notes updated:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Create Story
@@ -803,25 +962,25 @@ server.tool(
   CREATE_STORY_TOOL.description,
   CREATE_STORY_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/stories`;
+    const url = `${GOALSTORY_API_BASE_URL}/stories`
     const body = {
       goal_id: args.goal_id,
       step_id: args.step_id,
       title: args.title,
       story_text: args.story_text,
-    };
-    const result = await doRequest(url, "POST", body);
+    }
+    const result = await doRequest(url, 'POST', body)
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Story created:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read Stories
@@ -831,24 +990,24 @@ server.tool(
   READ_STORIES_TOOL.description,
   READ_STORIES_TOOL.inputSchema.shape,
   async (args) => {
-    const params = new URLSearchParams();
-    params.set("goal_id", args.goal_id);
-    params.set("step_id", args.step_id);
-    if (args.page) params.set("page", `${args.page}`);
-    if (args.limit) params.set("limit", `${args.limit}`);
-    const url = `${GOALSTORY_API_BASE_URL}/stories?${params.toString()}`;
-    const result = await doRequest(url, "GET");
+    const params = new URLSearchParams()
+    params.set('goal_id', args.goal_id)
+    params.set('step_id', args.step_id)
+    if (args.page) params.set('page', `${args.page}`)
+    if (args.limit) params.set('limit', `${args.limit}`)
+    const url = `${GOALSTORY_API_BASE_URL}/stories?${params.toString()}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Stories:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 /**
  * Read One Story
@@ -858,36 +1017,38 @@ server.tool(
   READ_ONE_STORY_TOOL.description,
   READ_ONE_STORY_TOOL.inputSchema.shape,
   async (args) => {
-    const url = `${GOALSTORY_API_BASE_URL}/stories/${args.id}`;
-    const result = await doRequest(url, "GET");
+    const url = `${GOALSTORY_API_BASE_URL}/stories/${args.id}`
+    const result = await doRequest(url, 'GET')
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Story data:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
-    };
+    }
   }
-);
+)
 
 // -----------------------------------------
 // RESOURCES
 // -----------------------------------------
-const ABOUT_GOALSTORY_RESOURCE_URI = `file:///docs/about-goalstory.md`;
+const ABOUT_GOALSTORY_RESOURCE_URI = `file:///docs/about-goalstory.md`
 
 // List available resources
 server.resource(
-  "About Goal Story",
+  'About Goal Story',
   ABOUT_GOALSTORY_RESOURCE_URI,
   async (uri) => ({
-    contents: [{
-      uri: uri.href,
-      text:  ABOUT_GOAL_STORYING
-    }]
+    contents: [
+      {
+        uri: uri.href,
+        text: ABOUT_GOAL_STORYING,
+      },
+    ],
   })
-);
+)
 
 // -----------------------------------------
 // PROMPTS
@@ -897,22 +1058,19 @@ const PROMPTS = {
   FORMULATE: `Formulate actionable steps for the user to achieve their stated goal.`,
   CONTEXT: `Gather context about the user and their current goal/step pair.`,
   DISCUSS: `Thoughtfully discuss a goal/step pair.`,
-  CAPTURE: "Capture/update notes for the current specific goal/step.",
+  CAPTURE: 'Capture/update notes for the current specific goal/step.',
   VISUALIZE: `Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.`,
   MANAGE: `Mark a goal and/or step complete, change status, and so on.
   Always first seek the user's confirmation before marking a goal and/or step copmlete, changing its status, and so on.`,
-};
+}
 
-server.prompt(
-  PROMPTS.CLARIFY,
-  {},
-  () => ({
-    messages: [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `I have a goal that I'd like to achieve. 
+server.prompt(PROMPTS.CLARIFY, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I have a goal that I'd like to achieve. 
           Work with me as my thought partner to clarify my goal so that it is clear, contextual and complete.
           Clarifying my goal with you is the 'CLARIFY' step from the Goal Story workflow.
 
@@ -962,36 +1120,32 @@ server.prompt(
           Title: Achieve Better Work-Life Balance  
           Description: "I want to reduce my working hours from 50 to 40 hours per week by the end of next quarter to spend more time with my family and pursue personal hobbies. I'll accomplish this by delegating one major task to a team member, scheduling regular check-ins with my manager, and avoiding work emails after 7 PM."
           </goal_story_example5>`,
-        },
       },
-      {
-        role: "assistant",
-        content: {
-          type: "text",
-          text: `As the Goal Story assistant, I'm happy to help you clarify your goal so it's focused and achievable. 
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to help you clarify your goal so it's focused and achievable. 
           After we have fully clarified your goal, I will ask you if you would like me to save it to Goal Story for you.`,
-        },
       },
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `Great. Now let's begin our thought partnership to clarify my goal.`,
-        },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Great. Now let's begin our thought partnership to clarify my goal.`,
       },
-    ],
-  })
-);
-server.prompt(
-  PROMPTS.FORMULATE,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would like to formulate steps for achieving my goal.
+    },
+  ],
+}))
+server.prompt(PROMPTS.FORMULATE, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would like to formulate steps for achieving my goal.
             Work with me as my thought partner to formulate an actionable list of steps.
             Formulating the list of steps here is the 'FORMULATE' step from the Goal Story workflow.
 
@@ -1161,37 +1315,33 @@ server.prompt(
               •	Schedule weekly family activities or personal hobbies so they become non-negotiable events.
               •	Reflect weekly on whether your balance is improving and adjust strategies as needed.
             </goal_story_example5>`,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to help you formulate actionable steps for your goal. 
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to help you formulate actionable steps for your goal. 
             After I have worked with you to create the actionable steps, I will ask you if you would like me to save them to Goal Story for you.`,
-          },
-        },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Great. Now let's begin our thought partnership to formulate the steps.`,
-          },
-        },
-      ],
-  })
-);
+      },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Great. Now let's begin our thought partnership to formulate the steps.`,
+      },
+    },
+  ],
+}))
 
-server.prompt(
-  PROMPTS.CONTEXT,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would you to gather context about me and my current goal/step as part of the 'CONTEXT' step from the Goal Story workflow.
+server.prompt(PROMPTS.CONTEXT, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would you to gather context about me and my current goal/step as part of the 'CONTEXT' step from the Goal Story workflow.
 
             For your reference, here are some examples of context gathered about other users of Goal Story:
 
@@ -1235,36 +1385,32 @@ server.prompt(
             Robin is a 42-year-old mid-level manager who often works 50 hours a week. They have two children in elementary school and feel guilty about missing family dinners and weekend outings. Robin has tried to reduce working hours before but struggled to delegate tasks. They're driven by a desire to be more present for family while still meeting workplace expectations. Robin responds well to routine and would benefit from a clear plan to reclaim personal time without compromising job performance.
             </goal_story_example5>            
             `,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to gather context about you and your current goal/step pair.`,
-          },
-        },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Great. Now let's begin. What else do you not yet know that you would like to know aboutme or my current goal and/or step?`,
-          },
-        },
-      ],
-  })
-);
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to gather context about you and your current goal/step pair.`,
+      },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Great. Now let's begin. What else do you not yet know that you would like to know aboutme or my current goal and/or step?`,
+      },
+    },
+  ],
+}))
 
-server.prompt(
-  PROMPTS.DISCUSS,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would like to my goal/step in detail. 
+server.prompt(PROMPTS.DISCUSS, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would like to my goal/step in detail. 
             Work with me as my thought partner to carefully discuss my goal and step in detail so that I am more likely to uncover insights with you.
             Discussing my goal and/or step here with you is the 'DISCUSS' step from the Goal Story workflow.
 
@@ -1344,72 +1490,62 @@ server.prompt(
 
             Once we have that info, we can talk about streamlining processes or reassigning tasks. But first, let's get an honest snapshot of your workload—without that, we can't make meaningful changes. Does anything about this step feel overwhelming or unclear? Let's break it down so it's manageable."
             </goal_story_example5>`,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to discuss your goal/step. 
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to discuss your goal/step. 
             As we discuss your goal/step in detail, I will ask you along the way if you'd like me to save any notes with insights from our discussion or ideas you want to capture to the goal's notes in Goal Story.`,
-          },
-        },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Great. Now let's begin our discussion.`,
-          },
-        },
-      ],
+      },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Great. Now let's begin our discussion.`,
+      },
+    },
+  ],
+}))
 
-  })
-);
-
-server.prompt(
-  PROMPTS.CAPTURE,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would like to capture some notes about my current goal/step. 
+server.prompt(PROMPTS.CAPTURE, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would like to capture some notes about my current goal/step. 
             All notes must markdown format.
             Capturing notes for me is the 'CAPTURE' step from the Goal Story workflow.`,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to capture notes related to your goal/step. 
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to capture notes related to your goal/step. 
             I will always format notes as markdown.`,
-          },
-        },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Great. Now how should we begin capturing my notes?`,
-          },
-        },
-      ],
+      },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Great. Now how should we begin capturing my notes?`,
+      },
+    },
+  ],
+}))
 
-  })
-);
-
-server.prompt(
-  PROMPTS.VISUALIZE,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would like you to use all the context you know about me, my beliefs and my intrinsic motivators and generate a story about me achieving my goal step.
+server.prompt(PROMPTS.VISUALIZE, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would like you to use all the context you know about me, my beliefs and my intrinsic motivators and generate a story about me achieving my goal step.
             Helping me visualize my goal step by creating a story for me is the 'VISUALIZE' step from the Goal Story workflow.
                
             If you don't know enough about me to create a story, you can use the 'goalstory_read_self_user' tool.
@@ -1472,65 +1608,59 @@ server.prompt(
             Robin stands in their office, an empty whiteboard in front of them. The word "PRIORITIES" is written across the top in bold letters. They close their eyes and imagine a calmer workweek—a 40-hour schedule that leaves space for Wednesday night dinners with family and weekend hikes with the kids. In that vision, Robin is leading team meetings with confidence, knowing which tasks to delegate and which to handle personally. No more late-night inbox scanning or a constant feeling of guilt. Opening their eyes, Robin methodically lists every single project, team request, and committee commitment on the board. It's a surprising amount, but with each new item, Robin sees a path toward clarity forming. They feel relief imagining how some tasks can be handed off or postponed. The mental image of finishing work at 5 PM on Friday, smiling as they leave the office to pick up the kids, motivates Robin to keep writing until every task is accounted for. Stepping back to review the board, they sense the beginnings of balance. This honest snapshot of their workload is the key to building a healthier, more harmonious life.
             </goal_story_example5>
             `,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to generate a personalized story about you achieving your goal step. 
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to generate a personalized story about you achieving your goal step. 
             After I have created your story, I will present it to you and ask you if you would like me to save it to Goal Story for you.`,
-          },
-        },
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Thank you, can you now go ahead and create the story, and write it all out for me here?
+      },
+    },
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `Thank you, can you now go ahead and create the story, and write it all out for me here?
             After you've written it out can you check with me to see if I want to change it or save it to Goal Story?`,
-          },
-        },
-      ],
+      },
+    },
+  ],
+}))
 
-  })
-);
-
-server.prompt(
-  PROMPTS.MANAGE,
-  {},
-  () => ({
-      messages: [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `I would like to help me manage my goals and steps in Goal Story. Can you help me with the 'MANAGE' step from the Goal Story workflow?`,
-          },
-        },
-        {
-          role: "assistant",
-          content: {
-            type: "text",
-            text: `As the Goal Story assistant, I'm happy to help you manage your goals and steps.`,
-          },
-        },
-      ],
-  })
-);
+server.prompt(PROMPTS.MANAGE, {}, () => ({
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text',
+        text: `I would like to help me manage my goals and steps in Goal Story. Can you help me with the 'MANAGE' step from the Goal Story workflow?`,
+      },
+    },
+    {
+      role: 'assistant',
+      content: {
+        type: 'text',
+        text: `As the Goal Story assistant, I'm happy to help you manage your goals and steps.`,
+      },
+    },
+  ],
+}))
 
 // -----------------------------------------
 // Running the server
 // -----------------------------------------
 async function runServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("GoalStory MCP Server running on stdio");
+  const transport = new StdioServerTransport()
+  await server.connect(transport)
+  console.error('GoalStory MCP Server running on stdio')
 }
 
 runServer().catch((error) => {
-  console.error("Fatal error running server:", error);
-  process.exit(1);
-});
+  console.error('Fatal error running server:', error)
+  process.exit(1)
+})
 
 const ABOUT_GOAL_STORYING = `# About Goal Story:
 
@@ -1581,5 +1711,4 @@ As your Goal Story assistant, Claude should guide you through the Goal Storying 
 - CONTEXT - if you engage Claude in a discussion about your "current" goal and/or goal step, Claude will gather context before discussing.
 - DISCUSS and CAPTURE - as you and Claude discuss a goal step, any apparent insights or valuable information that arise should be saved to the goal step notes
 - VISUALIZE - if you ask for a story or for help visualizing your goal step, Claude should always share the full and complete story with you after creating it and saving it to Goal Story.
-- MANAGE - Claude should always first seek your confirmation before marking a goal and/or step copmlete, changing its status, and so on`;
-
+- MANAGE - Claude should always first seek your confirmation before marking a goal and/or step copmlete, changing its status, and so on`
