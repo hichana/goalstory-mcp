@@ -17,7 +17,8 @@
     "inspect": "npx @modelcontextprotocol/inspector dist/index.js http://127.0.0.1:4000 admin",
     "mcp": "concurrently \"npm run build && npm run inspect\" \"npm run watch\" ",
     "pub": "npm publish --access public",
-    "watch-claude-desktop-logs": "tail -n 20 -F ~/Library/Logs/Claude/mcp*.log"
+    "watch-claude-desktop-logs": "tail -n 20 -F ~/Library/Logs/Claude/mcp*.log",
+    "pretty": "npx prettier . --write"
   },
   "repository": {
     "type": "git",
