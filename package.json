@@ -44,6 +44,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.8.2",
     "@types/node": "^22.13.11",
     "concurrently": "^9.1.2",
     "shx": "^0.3.4",
