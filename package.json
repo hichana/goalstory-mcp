@@ -18,7 +18,8 @@
     "mcp": "concurrently \"npm run build && npm run inspect\" \"npm run watch\" ",
     "pub": "npm publish --access public",
     "watch-claude-desktop-logs": "tail -n 20 -F ~/Library/Logs/Claude/mcp*.log",
-    "pretty": "npx prettier . --write"
+    "pretty": "npx prettier . --write",
+    "test": "vitest"
   },
   "repository": {
     "type": "git",
@@ -50,6 +51,7 @@
     "concurrently": "^9.1.2",
     "prettier": "3.5.3",
     "shx": "^0.3.4",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.1"
   }
 }
