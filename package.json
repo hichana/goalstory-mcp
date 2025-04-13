@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "orchestra8-mcp": "dist/index.js"
+    "goalstory-mcp": "dist/index.js"
   },
   "files": [
     "dist"
