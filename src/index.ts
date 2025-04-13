@@ -1054,13 +1054,13 @@ server.resource(
 // PROMPTS
 // -----------------------------------------
 const PROMPTS = {
-  CLARIFY: `Clarify the user's goal as their thought partner.`,
-  FORMULATE: `Formulate actionable steps for the user to achieve their stated goal.`,
-  CONTEXT: `Gather context about the user and their current goal/step pair.`,
-  DISCUSS: `Thoughtfully discuss a goal/step pair.`,
-  CAPTURE: "Capture/update notes for the current specific goal/step.",
-  VISUALIZE: `Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.`,
-  MANAGE: `Mark a goal and/or step complete, change status, and so on.
+  CLARIFY: `CLARIFY: Clarify the user's goal as their thought partner.`,
+  FORMULATE: `FORMULATE: Formulate actionable steps for the user to achieve their stated goal.`,
+  CONTEXT: `CONTEXT: Gather context about the user and their current goal/step pair.`,
+  DISCUSS: `DISCUSS: Thoughtfully discuss a goal/step pair.`,
+  CAPTURE: "CAPTURE: Capture/update notes for the current specific goal/step.",
+  VISUALIZE: `VISUALIZE: Use context to create a highly personalized, belief system driven, and intrinsic motivations-aware story about the achieving of the goal/step pair.`,
+  MANAGE: `MANAGE: Mark a goal and/or step complete, change status, and so on.
   Always first seek the user's confirmation before marking a goal and/or step copmlete, changing its status, and so on.`,
 };
 
