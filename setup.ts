@@ -4,7 +4,6 @@ import { afterAll, beforeAll } from "vitest";
 
 beforeAll(async () => {
   await client.connect(transport);
-  console.log("env:", process.env.NODE_ENV);
 });
 
 afterAll(async () => {
