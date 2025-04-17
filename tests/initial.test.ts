@@ -28,6 +28,11 @@ const TOOL_NAMES = {
 const MOCK_USER_NAME = "Test User";
 const MOCK_USER_ABOUT = "Loves testing and achieving goals.";
 
+type ToolCallResult = {
+  content: { type: string; text: string }[];
+  isError: boolean | undefined;
+};
+
 test("prompts, resources and tools should exist", async () => {
   const { prompts } = await client.listPrompts();
   prompts.forEach(async (p) => {
@@ -69,12 +74,16 @@ test("prompts, resources and tools should exist", async () => {
 describe("Goal Story Tool Tests", () => {
   // --- About Tool ---
   test(`${TOOL_NAMES.GOALSTORY_ABOUT}`, async () => {
-    const { content, isError } = (await client.callTool({
+    const {
+      content: [{ text }],
+      isError,
+    } = (await client.callTool({
       name: TOOL_NAMES.GOALSTORY_ABOUT,
       arguments: {},
-    })) as CallToolResult;
+    })) as ToolCallResult;
+
     expect(isError).toBeFalsy();
-    expect(content).toBeDefined();
+    expect(text).toBeDefined();
   });
 
   // --- User Tools ---
