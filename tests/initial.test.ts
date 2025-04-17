@@ -83,22 +83,29 @@ describe("Goal Story Tool Tests", () => {
     })) as ToolCallResult;
 
     expect(isError).toBeFalsy();
-    expect(text).toBeDefined();
+    expect(text).toBeTypeOf("string");
   });
 
   // --- User Tools ---
   describe("User Tools", () => {
     test(`${TOOL_NAMES.GOALSTORY_READ_SELF_USER}`, async () => {
-      const { content, isError } = (await client.callTool({
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
         name: TOOL_NAMES.GOALSTORY_READ_SELF_USER,
         arguments: {},
-      })) as CallToolResult;
+      })) as ToolCallResult;
       expect(isError).toBeFalsy();
-      expect(content).toBeDefined();
+      expect(text).toBeTypeOf("string");
     });
 
     test(`${TOOL_NAMES.GOALSTORY_UPDATE_SELF_USER}`, async () => {
-      const { content, isError } = (await client.callTool({
+      const {
+        content: [{ text }],
+
+        isError,
+      } = (await client.callTool({
         name: TOOL_NAMES.GOALSTORY_UPDATE_SELF_USER,
         arguments: {
           name: MOCK_USER_NAME,
@@ -107,7 +114,9 @@ describe("Goal Story Tool Tests", () => {
         },
       })) as CallToolResult;
       expect(isError).toBeFalsy();
-      expect(content).toBeDefined();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain(MOCK_USER_NAME);
+      expect(text).toContain(MOCK_USER_ABOUT);
     });
   });
 });
