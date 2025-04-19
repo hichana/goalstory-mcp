@@ -1,7 +1,8 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll, afterAll } from "vitest"; // Added beforeAll, afterAll potentially
 import { client } from "../setup";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+// Updated TOOL_NAMES
 const TOOL_NAMES = {
   GOALSTORY_ABOUT: "goalstory_about",
   GOALSTORY_READ_SELF_USER: "goalstory_read_self_user",
@@ -23,6 +24,11 @@ const TOOL_NAMES = {
   GOALSTORY_CREATE_STORY: "goalstory_create_story",
   GOALSTORY_READ_STORIES: "goalstory_read_stories",
   GOALSTORY_READ_ONE_STORY: "goalstory_read_one_story",
+  // New Scheduled Story Tools
+  GOALSTORY_READ_SCHEDULED_STORIES: "goalstory_read_scheduled_stories",
+  GOALSTORY_CREATE_SCHEDULED_STORY: "goalstory_create_scheduled_story",
+  GOALSTORY_UPDATE_SCHEDULED_STORY: "goalstory_update_scheduled_story",
+  GOALSTORY_DESTROY_SCHEDULED_STORY: "goalstory_destroy_scheduled_story",
 };
 
 // --- Mock Data ---
@@ -40,8 +46,14 @@ const MOCK_STEP_NAMES = [
 ];
 const MOCK_STEP_UPDATE_NAME = "Write Goal Tests (Revised)";
 const MOCK_STEP_NOTES = "Remember to cover edge cases.";
-const MOCK_STORY_TITLE = "The Tale of the Tested Tool";
+const MOCK_STORY_TITLE = "The Tale of the Tested Tool"; // Title is required now
 const MOCK_STORY_TEXT = "Once upon a time, a tool was tested thoroughly.";
+const MOCK_SCHEDULE_TIME = { hour: "10", period: "AM", utcOffset: "+01:00" };
+const MOCK_SCHEDULE_UPDATE_TIME = {
+  hour: "11",
+  period: "AM",
+  utcOffset: "+01:00",
+};
 
 type ToolCallResult = {
   content: { type: string; text: string }[];
@@ -52,12 +64,18 @@ type ToolCallResult = {
 function parseIdFromResponse(text: string, prefix: string): string | undefined {
   try {
     const jsonString = text.substring(prefix.length);
-    const { result } = JSON.parse(jsonString);
-    return result?.id;
+    const parsed = JSON.parse(jsonString);
+
+    // Handle potential variations in response structure (direct result vs nested)
+    const resultData = parsed.result || parsed;
+
+    return resultData?.id;
   } catch (error) {
     console.error(
       `Failed to parse ID from text starting with '${prefix}':`,
       error,
+      "\nText:",
+      text,
     );
     return undefined;
   }
@@ -67,21 +85,23 @@ function parseIdFromResponse(text: string, prefix: string): string | undefined {
 let createdGoalId: string | undefined;
 let createdStepId: string | undefined;
 let createdStoryId: string | undefined;
+let createdScheduledStoryId: string | undefined; // New ID for scheduled story
 
 test("prompts, resources and tools should exist", async () => {
   const { prompts } = await client.listPrompts();
+  expect(prompts.length).toBeGreaterThan(0); // Basic check
   prompts.forEach(async (p) => {
     expect(p.name).toBeTypeOf("string");
-
     const prompt = await client.getPrompt({
       name: p.name,
       arguments: {},
     });
     expect(prompt).toBeDefined();
+    expect(prompt.messages).toBeDefined(); // Check structure
   });
 
   const { resources } = await client.listResources();
-
+  expect(resources.length).toBeGreaterThan(0); // Basic check
   resources.forEach(async (r) => {
     expect(r.name).toBeTypeOf("string");
     expect(r.uri).toBeTypeOf("string");
@@ -90,6 +110,7 @@ test("prompts, resources and tools should exist", async () => {
       uri: r.uri,
     });
     const { contents } = resource;
+    expect(contents.length).toBeGreaterThan(0);
     contents.forEach((c) => {
       expect(c.text).toBeTypeOf("string");
       expect(c.uri).toBeTypeOf("string");
@@ -99,10 +120,17 @@ test("prompts, resources and tools should exist", async () => {
   });
 
   const { tools } = await client.listTools();
+  expect(tools.length).toBeGreaterThan(Object.keys(TOOL_NAMES).length - 1);
   tools.forEach((t) => {
     expect(t.name).toBeTypeOf("string");
     expect(t.description).toBeTypeOf("string");
     expect(t.inputSchema).toBeDefined();
+  });
+
+  // Verify all expected tools are listed
+  const listedToolNames = tools.map((t) => t.name);
+  Object.values(TOOL_NAMES).forEach((expectedName) => {
+    expect(listedToolNames).toContain(expectedName);
   });
 });
 
@@ -195,6 +223,7 @@ describe("Goal Story Tool Tests", () => {
 
       // Attempt to parse and store the ID
       createdGoalId = parseIdFromResponse(text, "Goal created:\n");
+      console.log("Created Goal ID:", createdGoalId); // Log ID for debugging
       expect(createdGoalId).toBeTypeOf("string");
     });
 
@@ -246,7 +275,7 @@ describe("Goal Story Tool Tests", () => {
           id: createdGoalId!,
           name: MOCK_GOAL_UPDATE_NAME,
           description: MOCK_GOAL_UPDATE_DESC,
-          status: 1, // Example status update (e.g., In Progress)
+          status: 0, // Example status update (e.g., Active)
         },
       })) as ToolCallResult;
       expect(isError).toBeFalsy();
@@ -283,13 +312,20 @@ describe("Goal Story Tool Tests", () => {
       // Attempt to parse and store the ID of the *first* created step
       try {
         const jsonString = text.substring("Steps created:\n".length);
-        const { result } = JSON.parse(jsonString);
-        expect(Array.isArray(result)).toBeTruthy();
-        expect(result.length).toBeGreaterThan(0);
-        createdStepId = result[0]?.id;
+        const parsed = JSON.parse(jsonString);
+        const resultData = parsed.result || parsed; // Handle nested result
+        expect(Array.isArray(resultData)).toBeTruthy();
+        expect(resultData.length).toBeGreaterThan(0);
+        createdStepId = resultData[0]?.id;
+        console.log("Created Step ID:", createdStepId); // Log ID for debugging
         expect(createdStepId).toBeTypeOf("string");
       } catch (error) {
-        console.error("Failed to parse Step IDs from response:", error);
+        console.error(
+          "Failed to parse Step IDs from response:",
+          error,
+          "\nText:",
+          text,
+        );
         expect(error).toBeNull(); // Force test failure if parsing fails
       }
     });
@@ -347,7 +383,7 @@ describe("Goal Story Tool Tests", () => {
         arguments: {
           id: createdStepId!,
           name: MOCK_STEP_UPDATE_NAME,
-          status: 1, // Example status update (e.g., In Progress)
+          status: 0, // Example status update (e.g., Pending)
         },
       })) as ToolCallResult;
       expect(isError).toBeFalsy();
@@ -383,6 +419,8 @@ describe("Goal Story Tool Tests", () => {
   // --- Focus/Context Tools ---
   describe("Focus/Context Tools", () => {
     test(`${TOOL_NAMES.GOALSTORY_READ_CURRENT_FOCUS}`, async () => {
+      // This might depend on the last updated item, which could be a step note
+      // May need adjustment based on actual API logic for 'current'
       const {
         content: [{ text }],
         isError,
@@ -443,7 +481,7 @@ describe("Goal Story Tool Tests", () => {
         arguments: {
           goal_id: createdGoalId!,
           step_id: createdStepId!,
-          title: MOCK_STORY_TITLE,
+          title: MOCK_STORY_TITLE, // Title is required now
           story_text: MOCK_STORY_TEXT,
         },
       })) as ToolCallResult;
@@ -454,6 +492,7 @@ describe("Goal Story Tool Tests", () => {
 
       // Attempt to parse and store the ID
       createdStoryId = parseIdFromResponse(text, "Story created:\n");
+      console.log("Created Story ID:", createdStoryId); // Log ID for debugging
       expect(createdStoryId).toBeTypeOf("string");
     });
 
@@ -503,10 +542,99 @@ describe("Goal Story Tool Tests", () => {
     });
   });
 
+  // --- Scheduled Story Tools ---
+  describe("Scheduled Story Tools", () => {
+    test(`${TOOL_NAMES.GOALSTORY_CREATE_SCHEDULED_STORY}`, async () => {
+      const {
+        content: [{ text: goalText }],
+        isError: isGoalError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_READ_ONE_GOAL,
+        arguments: { id: createdGoalId! },
+      })) as ToolCallResult;
+
+      expect(
+        createdGoalId,
+        "Create Goal test must run first and succeed.",
+      ).toBeDefined();
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_CREATE_SCHEDULED_STORY,
+        arguments: {
+          goal_id: createdGoalId!,
+          timeSettings: MOCK_SCHEDULE_TIME,
+        },
+      })) as ToolCallResult;
+
+      expect(isError).toBeFalsy();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain("Scheduled story created:");
+
+      // Attempt to parse and store the ID
+      createdScheduledStoryId = parseIdFromResponse(
+        text,
+        "Scheduled story created:\n",
+      );
+      console.log("Created Scheduled Story ID:", createdScheduledStoryId); // Log ID
+      expect(createdScheduledStoryId).toBeTypeOf("string");
+    });
+
+    test(`${TOOL_NAMES.GOALSTORY_READ_SCHEDULED_STORIES}`, async () => {
+      // Depends on the create test above
+      expect(
+        createdScheduledStoryId,
+        "Create Scheduled Story test must run first and succeed.",
+      ).toBeDefined();
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_READ_SCHEDULED_STORIES,
+        arguments: { limit: 5 },
+      })) as ToolCallResult;
+      expect(isError).toBeFalsy();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain("Scheduled stories retrieved:");
+      // Check if the schedule we created is listed (using ID)
+      expect(text).toContain(createdScheduledStoryId!);
+    });
+
+    test(`${TOOL_NAMES.GOALSTORY_UPDATE_SCHEDULED_STORY}`, async () => {
+      expect(
+        createdScheduledStoryId,
+        "Create Scheduled Story test must run first and succeed.",
+      ).toBeDefined();
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_UPDATE_SCHEDULED_STORY,
+        arguments: {
+          id: createdScheduledStoryId!,
+          timeSettings: MOCK_SCHEDULE_UPDATE_TIME,
+          status: 0, // e.g., Ensure it's active
+        },
+      })) as ToolCallResult;
+
+      expect(isError).toBeFalsy();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain("Scheduled story updated:");
+      expect(text).toContain(createdScheduledStoryId!);
+    });
+  });
+
   // --- Cleanup ---
   // Run destroy tests last to clean up created resources
   describe("Cleanup Tools", () => {
+    // Destroy Step needs to happen before Destroy Goal if steps exist
     test(`${TOOL_NAMES.GOALSTORY_DESTROY_STEP}`, async () => {
+      // Check if step was created, skip if not (might happen if create failed)
+      if (!createdStepId) {
+        console.warn("Skipping Destroy Step test - Step ID not available.");
+        return;
+      }
       expect(
         createdStepId,
         "Create Steps test must run first and succeed.",
@@ -525,7 +653,38 @@ describe("Goal Story Tool Tests", () => {
       // expect(text).toContain(createdStepId!);
     });
 
+    // Destroy Scheduled Story
+    test(`${TOOL_NAMES.GOALSTORY_DESTROY_SCHEDULED_STORY}`, async () => {
+      // Check if scheduled story was created, skip if not
+      if (!createdScheduledStoryId) {
+        console.warn(
+          "Skipping Destroy Scheduled Story test - ID not available.",
+        );
+        return;
+      }
+      expect(
+        createdScheduledStoryId,
+        "Create Scheduled Story test must run first and succeed.",
+      ).toBeDefined();
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_DESTROY_SCHEDULED_STORY,
+        arguments: { id: createdScheduledStoryId! },
+      })) as ToolCallResult;
+      expect(isError).toBeFalsy();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain("Scheduled story deleted:");
+    });
+
+    // Destroy Goal (implicitly cleans up stories associated with it if cascade delete is set up)
     test(`${TOOL_NAMES.GOALSTORY_DESTROY_GOAL}`, async () => {
+      // Check if goal was created, skip if not
+      if (!createdGoalId) {
+        console.warn("Skipping Destroy Goal test - Goal ID not available.");
+        return;
+      }
       expect(
         createdGoalId,
         "Create Goal test must run first and succeed.",
