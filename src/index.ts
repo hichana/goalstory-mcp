@@ -535,7 +535,7 @@ const TimeSettingsSchema = z
 const READ_SCHEDULED_STORIES_TOOL = {
   name: "goalstory_read_scheduled_stories",
   description:
-    "Get a list of all scheduled story generation configurations for the user, with optional pagination.",
+    "Get a list of all scheduled story generation configurations for the user, with optional pagination. IMPORTANT: All times stored in Goal Story are in UTC, so you'll have to convert that to the user's local time.",
   inputSchema: z.object({
     page: z
       .number()
@@ -612,7 +612,7 @@ const DESTROY_SCHEDULED_STORY_TOOL = {
 const server = new McpServer(
   {
     name: "goalstory-mcp-server",
-    version: "0.4.0",
+    version: "0.4.1",
   },
   {
     capabilities: {
