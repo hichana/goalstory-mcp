@@ -409,6 +409,20 @@ const UPDATE_STEP_NOTES_TOOL = {
 };
 
 /**
+ * POST /steps/order
+ */
+const SET_STEPS_ORDER_TOOL = {
+  name: "goalstory_set_steps_order",
+  description:
+    "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. Steps order is signified by the 'updated_at' date where the newest (earliest) timestamp represents the first step in the sequence.",
+  inputSchema: z.object({
+    ordered_step_ids: z
+      .array(z.string())
+      .describe("Array of step IDs in the desired new order."),
+  }),
+};
+
+/**
  * POST /stories
  */
 const CREATE_STORY_TOOL = {
@@ -1085,6 +1099,43 @@ server.tool(
         {
           type: "text",
           text: `Step notes updated:\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+      isError: false,
+    };
+  },
+);
+
+/**
+ * Set Steps Order
+ */
+server.tool(
+  SET_STEPS_ORDER_TOOL.name,
+  SET_STEPS_ORDER_TOOL.description,
+  SET_STEPS_ORDER_TOOL.inputSchema.shape,
+  async (args) => {
+    const url = `${GOALSTORY_API_BASE_URL}/steps/order`;
+
+    // If ordered_step_ids comes in as a string (for local development), convert it to array
+    let ordered_step_ids = args.ordered_step_ids;
+    if (typeof ordered_step_ids === "string") {
+      const idsAsString = ordered_step_ids as string;
+      ordered_step_ids = idsAsString
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+
+    const body = {
+      ordered_step_ids,
+    };
+
+    const result = await doRequest(url, "POST", body);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Steps order updated:\n${JSON.stringify(result, null, 2)}`,
         },
       ],
       isError: false,
