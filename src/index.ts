@@ -416,7 +416,7 @@ const SET_STEPS_ORDER_TOOL = {
   description:
     "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. Steps order is signified by the 'updated_at' date where the newest (earliest) timestamp represents the first step in the sequence.",
   inputSchema: z.object({
-    ordered_step_ids: z
+    ordered_steps_ids: z
       .array(z.string())
       .describe("Array of step IDs in the desired new order."),
   }),
@@ -1116,18 +1116,18 @@ server.tool(
   async (args) => {
     const url = `${GOALSTORY_API_BASE_URL}/steps/order`;
 
-    // If ordered_step_ids comes in as a string (for local development), convert it to array
-    let ordered_step_ids = args.ordered_step_ids;
-    if (typeof ordered_step_ids === "string") {
-      const idsAsString = ordered_step_ids as string;
-      ordered_step_ids = idsAsString
+    // If ordered_steps_ids comes in as a string (for local development), convert it to array
+    let ordered_steps_ids = args.ordered_steps_ids;
+    if (typeof ordered_steps_ids === "string") {
+      const idsAsString = ordered_steps_ids as string;
+      ordered_steps_ids = idsAsString
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
     }
 
     const body = {
-      ordered_step_ids,
+      ordered_steps_ids,
     };
 
     const result = await doRequest(url, "POST", body);

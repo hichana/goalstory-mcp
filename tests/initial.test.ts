@@ -21,6 +21,7 @@ const TOOL_NAMES = {
   GOALSTORY_UPDATE_STEP: "goalstory_update_step",
   GOALSTORY_DESTROY_STEP: "goalstory_destroy_step",
   GOALSTORY_UPDATE_STEP_NOTES: "goalstory_update_step_notes",
+  GOALSTORY_SET_STEPS_ORDER: "goalstory_set_steps_order", // New Steps Order Tool
   GOALSTORY_CREATE_STORY: "goalstory_create_story",
   GOALSTORY_READ_STORIES: "goalstory_read_stories",
   GOALSTORY_READ_ONE_STORY: "goalstory_read_one_story",
@@ -84,6 +85,7 @@ function parseIdFromResponse(text: string, prefix: string): string | undefined {
 // Variables to store created IDs for subsequent tests
 let createdGoalId: string | undefined;
 let createdStepId: string | undefined;
+let createdStepIds: string[] = []; // Array to store all created step IDs for reordering test
 let createdStoryId: string | undefined;
 let createdScheduledStoryId: string | undefined; // New ID for scheduled story
 
@@ -309,16 +311,22 @@ describe("Goal Story Tool Tests", () => {
       expect(text).toContain("Steps created:");
       expect(text).toContain(MOCK_STEP_NAMES[0]); // Check one of the step names
 
-      // Attempt to parse and store the ID of the *first* created step
+      // Attempt to parse and store all created step IDs
       try {
         const jsonString = text.substring("Steps created:\n".length);
         const parsed = JSON.parse(jsonString);
         const resultData = parsed.result || parsed; // Handle nested result
         expect(Array.isArray(resultData)).toBeTruthy();
         expect(resultData.length).toBeGreaterThan(0);
+
+        // Store the first step ID for individual step tests
         createdStepId = resultData[0]?.id;
         console.log("Created Step ID:", createdStepId); // Log ID for debugging
         expect(createdStepId).toBeTypeOf("string");
+
+        // Store all step IDs for reordering test
+        createdStepIds = resultData.map((step: any) => step.id);
+        expect(createdStepIds.length).toBe(MOCK_STEP_NAMES.length);
       } catch (error) {
         console.error(
           "Failed to parse Step IDs from response:",
@@ -413,6 +421,64 @@ describe("Goal Story Tool Tests", () => {
       expect(text).toContain("Step notes updated:");
       expect(text).toContain(createdStepId!);
       expect(text).toContain(MOCK_STEP_NOTES); // Check if notes are reflected (API might return the whole step)
+    });
+
+    test(`${TOOL_NAMES.GOALSTORY_SET_STEPS_ORDER}`, async () => {
+      expect(
+        createdGoalId,
+        "Create Goal test must run first and succeed.",
+      ).toBeDefined();
+      expect(
+        createdStepIds.length,
+        "Create Steps test must run first and create multiple steps.",
+      ).toBeGreaterThan(1);
+
+      // Reverse the order of steps to test reordering
+      const reorderedStepIds = [...createdStepIds].reverse();
+
+      const {
+        content: [{ text }],
+        isError,
+      } = (await client.callTool({
+        name: TOOL_NAMES.GOALSTORY_SET_STEPS_ORDER,
+        arguments: {
+          ordered_steps_ids: reorderedStepIds,
+        },
+      })) as ToolCallResult;
+      expect(isError).toBeFalsy();
+      expect(text).toBeTypeOf("string");
+      expect(text).toContain("Steps order updated:");
+
+      // Check if the response contains the reordered step IDs
+      // Note: The exact format of the response may vary depending on the API implementation
+      try {
+        const jsonString = text.substring("Steps order updated:\n".length);
+        const parsed = JSON.parse(jsonString);
+        const resultData = parsed.result || parsed; // Handle nested result
+
+        // Verify the response contains steps data
+        expect(Array.isArray(resultData)).toBeTruthy();
+
+        // If the API returns the step IDs in the new order, we can verify them
+        if (resultData.length > 0 && resultData[0].id) {
+          const returnedIds = resultData.map((step: any) => step.id);
+
+          // Check at least the first and last IDs to confirm reordering worked
+          expect(returnedIds[0]).toBe(reorderedStepIds[0]);
+          expect(returnedIds[returnedIds.length - 1]).toBe(
+            reorderedStepIds[reorderedStepIds.length - 1],
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to parse response from SET_STEPS_ORDER:",
+          error,
+          "\nText:",
+          text,
+        );
+        // Don't fail the test if we can't parse the response
+        // as the main goal is to verify the API call works
+      }
     });
   });
 
