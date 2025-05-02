@@ -310,7 +310,9 @@ const CREATE_STEPS_TOOL = {
       .describe("Unique identifier of the goal these steps will help achieve."),
     steps: z
       .array(z.string())
-      .describe("List of clear, actionable step descriptions in sequence. The first item in this array will become step 1, the second will become step 2, and so on based on timestamp ordering."),
+      .describe(
+        "List of clear, actionable step descriptions in sequence. The first item in this array will become step 1, the second will become step 2, and so on based on timestamp ordering.",
+      ),
   }),
 };
 
@@ -418,7 +420,9 @@ const SET_STEPS_ORDER_TOOL = {
   inputSchema: z.object({
     ordered_steps_ids: z
       .array(z.string())
-      .describe("Array of step IDs in the desired new order. The first ID in this array will become step 1 (earliest timestamp), the second ID will become step 2, and so on."),
+      .describe(
+        "Array of step IDs in the desired new order. The first ID in this array will become step 1 (earliest timestamp), the second ID will become step 2, and so on.",
+      ),
   }),
 };
 
@@ -626,7 +630,7 @@ const DESTROY_SCHEDULED_STORY_TOOL = {
 const server = new McpServer(
   {
     name: "goalstory-mcp-server",
-    version: "0.4.1",
+    version: "0.4.2",
   },
   {
     capabilities: {
