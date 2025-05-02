@@ -303,14 +303,14 @@ const GET_STORY_CONTEXT_TOOL = {
  */
 const CREATE_STEPS_TOOL = {
   name: "goalstory_create_steps",
-  description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed.`,
+  description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed. IMPORTANT: Steps will be ordered by their 'updated_at' timestamp, with the first step in your array getting the most recent timestamp (step 1), and subsequent steps having progressively older timestamps to determine their sequence.`,
   inputSchema: z.object({
     goal_id: z
       .string()
       .describe("Unique identifier of the goal these steps will help achieve."),
     steps: z
       .array(z.string())
-      .describe("List of clear, actionable step descriptions in sequence."),
+      .describe("List of clear, actionable step descriptions in sequence. The first item in this array will become step 1, the second will become step 2, and so on based on timestamp ordering."),
   }),
 };
 
@@ -320,7 +320,7 @@ const CREATE_STEPS_TOOL = {
 const READ_STEPS_TOOL = {
   name: "goalstory_read_steps",
   description:
-    "Access the action plan for a specific goal, showing all steps in the journey toward achievement.",
+    "Access the action plan for a specific goal, showing all steps in the journey toward achievement. IMPORTANT: Steps are ordered by their 'updated_at' timestamp, where the earliest timestamp (newest update) represents step 1, and as timestamps get older they signify the next ordered steps in sequence.",
   inputSchema: z.object({
     goal_id: z
       .string()
@@ -414,11 +414,11 @@ const UPDATE_STEP_NOTES_TOOL = {
 const SET_STEPS_ORDER_TOOL = {
   name: "goalstory_set_steps_order",
   description:
-    "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. Steps order is signified by the 'updated_at' date where the newest (earliest) timestamp represents the first step in the sequence.",
+    "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. IMPORTANT: Steps are ordered by their 'updated_at' timestamp, where the earliest timestamp (newest update) represents step 1, and as timestamps get older they signify the next ordered steps in sequence.",
   inputSchema: z.object({
     ordered_steps_ids: z
       .array(z.string())
-      .describe("Array of step IDs in the desired new order."),
+      .describe("Array of step IDs in the desired new order. The first ID in this array will become step 1 (earliest timestamp), the second ID will become step 2, and so on."),
   }),
 };
 
@@ -969,7 +969,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Steps created:\n${JSON.stringify(result, null, 2)}`,
+          text: `Steps created:\n${JSON.stringify(result, null, 2)}\n\nNOTE: Steps are ordered by their 'updated_at' timestamp, where the earliest timestamp represents step 1. The steps appear in the order you provided, with the first step having the most recent timestamp.`,
         },
       ],
       isError: false,
@@ -999,7 +999,7 @@ server.tool(
             result,
             null,
             2,
-          )}`,
+          )}\n\nIMPORTANT: Steps are ordered by their 'updated_at' timestamp, where the earliest timestamp (newest update) represents step 1, and as timestamps get older they signify the next steps in sequence.`,
         },
       ],
       isError: false,
@@ -1135,7 +1135,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Steps order updated:\n${JSON.stringify(result, null, 2)}`,
+          text: `Steps order updated:\n${JSON.stringify(result, null, 2)}\n\nIMPORTANT: The first step in the array now has the earliest 'updated_at' timestamp (step 1), and each subsequent step has progressively older timestamps that determine their order in the sequence.`,
         },
       ],
       isError: false,
