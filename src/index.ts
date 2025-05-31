@@ -973,7 +973,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Steps created:\n${JSON.stringify(result, null, 2)}\n\nNOTE: Steps are ordered by their 'updated_at' timestamp in ascending order - the step with the smallest timestamp value (updated first) is step 1. The steps appear in the order you provided, with the first step having the smallest timestamp. Example: If step A has timestamp 12:00 and step B has timestamp 12:01, then step A is step 1 and step B is step 2.`,
+          text: `Steps created:\n${JSON.stringify(result, null, 2)}\n\nNOTE: Steps are ordered by their 'order_ts' timestamp in ascending order - the step with the smallest timestamp value (updated first) is step 1. The steps appear in order, with the first step having the smallest timestamp. Example: If step A has timestamp 12:00 and step B has timestamp 12:01, then step A is step 1 and step B is step 2.`,
         },
       ],
       isError: false,
