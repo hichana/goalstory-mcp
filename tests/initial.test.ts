@@ -313,7 +313,11 @@ describe("Goal Story Tool Tests", () => {
 
       // Attempt to parse and store all created step IDs
       try {
-        const jsonString = text.substring("Steps created:\n".length);
+        // get just the obj string
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}") + 1;
+        const jsonString = text.slice(start, end);
+
         const parsed = JSON.parse(jsonString);
         const resultData = parsed.result || parsed; // Handle nested result
         expect(Array.isArray(resultData)).toBeTruthy();
