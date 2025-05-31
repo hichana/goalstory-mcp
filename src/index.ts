@@ -630,7 +630,7 @@ const DESTROY_SCHEDULED_STORY_TOOL = {
 const server = new McpServer(
   {
     name: "goalstory-mcp-server",
-    version: "0.4.3",
+    version: "0.4.4",
   },
   {
     capabilities: {
