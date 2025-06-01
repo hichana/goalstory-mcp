@@ -19,7 +19,8 @@
     "pub": "npm publish --access public",
     "watch-claude-desktop-logs": "tail -n 20 -F ~/Library/Logs/Claude/mcp*.log",
     "pretty": "npx prettier . --write",
-    "test": "vitest"
+    "test": "vitest",
+    "start-claude": "chmod +x ../start-claude-config.sh && ../start-claude-config.sh && claude"
   },
   "repository": {
     "type": "git",

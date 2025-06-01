@@ -1,0 +1,1 @@
+# GOALSTORY MCP
