@@ -220,7 +220,7 @@ export const GET_STORY_CONTEXT_TOOL = {
  */
 export const CREATE_STEPS_TOOL = {
   name: "goalstory_create_steps",
-  description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed. IMPORTANT: Steps will be ordered by their 'order_ts' timestamp in ascending order - the step with the smallest timestamp value (updated first) is step 1, and steps with larger timestamp values come later in the sequence. The first item in your array will get the smallest timestamp (becoming step 1), and subsequent steps will have progressively larger timestamps. NOTE: Be careful not to reverse the order - smaller timestamps (earlier in time) = earlier steps in the sequence.`,
+  description: `Formulate actionable steps for a goal through thoughtful discussion. Present the steps for user review either before or after saving, ensuring they're clear and achievable. Confirm if any refinements are needed. IMPORTANT: Steps are ordered by their 'order_ts' timestamp in ascending order - the step with the earliest timestamp becomes step 1, and steps with later timestamps follow in sequence. The first item in your array will receive the earliest timestamp (becoming step 1), and subsequent items will receive progressively later timestamps. NOTE: Array order determines step sequence - first array item = step 1, second array item = step 2, etc.`,
   inputSchema: z.object({
     goal_id: z
       .string()
@@ -239,7 +239,7 @@ export const CREATE_STEPS_TOOL = {
 export const READ_STEPS_TOOL = {
   name: "goalstory_read_steps",
   description:
-    "Access the action plan for a specific goal, showing all steps in the journey toward achievement. IMPORTANT: Steps are ordered by their 'order_ts' timestamp in ascending order - the step with the smallest timestamp value (updated first) is step 1, and steps with larger timestamp values come later in the sequence. NOTE: Be careful not to reverse the order - smaller timestamps (earlier in time) = earlier steps in the sequence.",
+    "Access the action plan for a specific goal, showing all steps in the journey toward achievement. IMPORTANT: Steps are returned ordered by their 'order_ts' timestamp in ascending order - the step with the earliest timestamp is step 1, and steps with later timestamps follow in sequence. The ordering is maintained automatically by the system.",
   inputSchema: z.object({
     goal_id: z
       .string()
@@ -333,7 +333,7 @@ export const UPDATE_STEP_NOTES_TOOL = {
 export const SET_STEPS_ORDER_TOOL = {
   name: "goalstory_set_steps_order",
   description:
-    "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. IMPORTANT: Steps are ordered by their 'order_ts' timestamp in ascending order - the step with the smallest timestamp value (updated first) is step 1, and steps with larger timestamp values come later in the sequence. NOTE: Be careful not to reverse the order - smaller timestamps (earlier in time) = earlier steps in the sequence.",
+    "Reorder steps in a goal by specifying the new sequence. This allows for prioritizing steps or reorganizing the workflow without deleting and recreating steps. IMPORTANT: Steps are ordered by their 'order_ts' timestamp in ascending order - the step with the earliest timestamp becomes step 1, and steps with later timestamps follow in sequence. The system will assign new timestamps based on the array order you provide.",
   inputSchema: z.object({
     ordered_steps_ids: z
       .array(z.string())

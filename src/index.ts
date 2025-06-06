@@ -636,7 +636,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Steps order updated:\n${JSON.stringify(result, null, 2)}\n\nIMPORTANT: The first step in the array now has the smallest 'order_ts' timestamp (step 1), and each subsequent step has progressively larger timestamps that determine their order in the sequence. Example: If step A has timestamp 12:00 and step B has timestamp 12:01, then step A is step 1 and step B is step 2.`,
+          text: `Steps order updated:\n${JSON.stringify(result, null, 2)}\n\nIMPORTANT: The first step in the array has the smallest 'order_ts' timestamp (step 1), and each subsequent step has progressively larger timestamps that determine their order in the sequence. Example: If step A has timestamp 12:00 and step B has timestamp 12:01, then step A is step 1 and step B is step 2.`,
         },
       ],
       isError: false,
