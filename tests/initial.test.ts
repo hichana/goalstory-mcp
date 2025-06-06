@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest"; // Added beforeAll, afterAll potentially
+import { describe, test, expect } from "vitest"; // Added beforeAll, afterAll potentially
 import { client } from "../setup";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
