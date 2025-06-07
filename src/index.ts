@@ -127,7 +127,7 @@ async function doRequest<T = any>(
 const server = new McpServer(
   {
     name: "goalstory-mcp-server",
-    version: "0.4.5",
+    version: "0.4.6",
   },
   {
     capabilities: {

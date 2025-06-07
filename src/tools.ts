@@ -338,7 +338,7 @@ export const SET_STEPS_ORDER_TOOL = {
     ordered_steps_ids: z
       .array(z.string())
       .describe(
-        "Array of step IDs in the desired new order. The first ID in this array will become step 1 (earliest timestamp), the second ID will become step 2, and so on.",
+        "Array of step IDs in the desired new order. The first ID in this array will become step 1 (earliest timestamp), the second ID will become step 2, and so on. The array of step IDs *MUST* contain the full set of step ids for the gaol.",
       ),
   }),
 };
