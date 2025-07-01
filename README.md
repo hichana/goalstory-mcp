@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/hichana-goalstory-mcp-badge.png)](https://mseep.ai/app/hichana-goalstory-mcp)
+
 # Goal Story MCP Server
 
 [![smithery badge](https://smithery.ai/badge/@hichana/goalstory-mcp)](https://smithery.ai/server/@hichana/goalstory-mcp)
